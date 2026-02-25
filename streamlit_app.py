@@ -7,35 +7,61 @@ from sklearn.linear_model import RidgeClassifier
 from sklearn.preprocessing import RobustScaler
 import datetime
 
-# --- SETTINGS & ADVANCED CUSTOM STYLING ---
-st.set_page_config(page_title="Hoya Morpho-ID", page_icon="🌿", layout="wide")
+# --- PRE-CONFIG & ELEGANT CUSTOM STYLING ---
+st.set_page_config(page_title="Hoya Morpho-ID", page_icon="🌸", layout="wide")
 
+# Custom CSS for an "Effeminate Botanical" Aesthetic
 st.markdown("""
     <style>
-    /* Main background and font */
-    .stApp { background-color: #FDFDFB; color: #2C3E50; }
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400&display=swap');
+
+    /* Main Background - Soft Linen/Cream */
+    .stApp { background-color: #FAFAF8; color: #4A5D4E; font-family: 'Lato', sans-serif; }
     
-    /* Elegant Tab Styling */
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: #F3F5F3; padding: 10px 10px 0px 10px; border-radius: 10px 10px 0 0; }
-    .stTabs [data-baseweb="tab"] {
-        height: 45px; border-radius: 5px 5px 0 0; padding: 0 20px;
-        font-weight: 600; color: #666; border: none;
+    /* Headers - Elegant Serif */
+    h1, h2, h3 { font-family: 'Playfair Display', serif; color: #2E4D32; font-style: italic; }
+    
+    /* Elegant Tab Styling - Soft Sage & White */
+    .stTabs [data-baseweb="tab-list"] { 
+        gap: 15px; background-color: #E8EDE7; padding: 15px 15px 0px 15px; 
+        border-radius: 20px 20px 0 0; 
     }
-    .stTabs [aria-selected="true"] { background-color: #FFFFFF !important; color: #2E7D32 !important; border-bottom: 3px solid #2E7D32 !important; }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px; border-radius: 15px 15px 0 0; padding: 0 30px;
+        font-weight: 400; color: #7A8B7C; border: none; font-size: 16px;
+    }
+    .stTabs [aria-selected="true"] { 
+        background-color: #FFFFFF !important; color: #2E4D32 !important; 
+        border-bottom: 4px solid #A3B18A !important; font-weight: 700;
+    }
     
-    /* Metrics and Cards */
-    [data-testid="stMetricValue"] { color: #2E7D32; font-family: 'Georgia', serif; }
-    .stButton>button { border-radius: 20px; background-color: #2E7D32; color: white; border: none; padding: 10px 25px; }
-    .stButton>button:hover { background-color: #1B5E20; color: white; border: none; }
+    /* Fancy Cards for Results */
+    .result-card {
+        background: white; border-radius: 25px; padding: 30px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #E9EDE9;
+        margin-bottom: 20px;
+    }
     
-    /* Aesthetic Sidebar */
-    [data-testid="stSidebar"] { background-color: #F8F9F8; border-right: 1px solid #EAECEE; }
+    /* Buttons - Soft Forest Green */
+    .stButton>button { 
+        border-radius: 30px; background-color: #588157; color: white; 
+        border: none; padding: 12px 40px; font-weight: 300; letter-spacing: 1px;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover { background-color: #3A5A40; color: white; transform: translateY(-2px); }
+    
+    /* Log Table Legibility Fix */
+    [data-testid="stTable"] { color: #2E4D32 !important; background-color: white; border-radius: 15px; }
+    th { background-color: #A3B18A !important; color: white !important; font-family: 'Lato', sans-serif; }
+    
+    /* Input Fields */
+    input { border-radius: 15px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- DATASET & MODEL ENGINE ---
+# --- DATASET ENGINE ---
 @st.cache_data
-def get_cleaned_data():
+def get_hoya_data():
     data = {
         'species': ['lazaroi', 'laut', 'bulacanensis', 'dalanesiae', 'cumingiana', 'diversifolia', 'ardamosana', 'brevialata', 'multiflora', 'monetteae', 'angustifolia', 'citrina', 'linea', 'blanca', 'linea', 'ciliatifolia', 'castillione', 'laoagensis', 'brittonii', 'pubicalyx', 'buotii', 'vitellinoides', 'densifolia', 'camphorifolia', 'camphorifolia', 'cutilipensis', 'kentiana', 'bangbangensis', 'wayetii', 'wayetii', 'cutispicellana', 'salacae', 'tricolor', 'bicolensis', 'obscura', 'obscura', 'obscura', 'obscura', 'flagellata', 'camphorifolia', 'samoensis', 'pottsii', 'cerata', 'cerata', 'cerata', 'albiflora', 'stagensis', 'obscura', 'golamcoana', 'odorata', 'benguetensis', 'benguetensis', 'malae', 'ruthiae', 'benguetensis', 'litoralis', 'mcgregorii', 'bensianii', 'chloroleuca', 'biakensis', 'pottsii', 'benguetensis', 'benguetensis', 'edoroana'],
         'pollinia_length': [0.56, 1.05, 0.51, 0.59, 0.85, 3.8, 5.6, 0.34, 5, 7.8, 4.5, 4.2, 4.3, 0.36, 2.7, 3, 0.26, 0.37, 0.7, 0.6, 0.69, 0.6, 0.82, 0.31, 0.4, 0.36, 0.48, 0.42, 0.39, 0.39, 0.35, 0.29, 0.36, 0.24, 0.35, 0.32, 0.35, 0.31, 0.41, 0.46, 0.48, 0.88, 0.83, 0.94, 0.51, 0.87, 0.9, 0.75, 0.72, 0.7, 0.57, 0.45, 0.85, 1.05, 0.39, 0.54, 0.46, 0.93, 0.46, 0.46, 0.36, 0.55, 0.54, 0.66],
@@ -45,7 +71,7 @@ def get_cleaned_data():
     }
     return pd.DataFrame(data)
 
-def train_engine(df):
+def train_model(df):
     trio = ['pollinia_length', 'pollinia_width', 'corpusculum_length']
     X = np.log1p(df[trio])
     y = df['clade']
@@ -53,7 +79,7 @@ def train_engine(df):
     model = RidgeClassifier(alpha=1.0).fit(scaler.transform(X), y)
     return model, scaler, trio
 
-def get_calibrated_probs(model, scaled_input):
+def get_probs(model, scaled_input):
     decision = model.decision_function(scaled_input)
     if decision.ndim == 1: 
         p = 1 / (1 + np.exp(-decision))
@@ -61,123 +87,145 @@ def get_calibrated_probs(model, scaled_input):
     exp_d = np.exp(decision)
     return exp_d / np.sum(exp_d, axis=1, keepdims=True)
 
-df = get_cleaned_data()
-model, scaler, trio = train_engine(df)
+df = get_hoya_data()
+model, scaler, trio = train_model(df)
 
 if 'test_log' not in st.session_state: st.session_state.test_log = []
 
-# --- HEADER SECTION ---
-st.title("🌿 Hoya Morpho-ID: Precision Taxonomy")
-st.markdown("---")
+# --- APP LAYOUT ---
+st.write(f"<h1 style='text-align: center; margin-bottom: 30px;'>🌿 Hoya Morpho-ID: Precision Taxonomy</h1>", unsafe_allow_html=True)
 
-tabs = st.tabs(["🏛️ Research Overview", "🔬 Diagnostic Lab", "📊 Batch Analysis", "📜 Testing Log"])
+tab1, tab2, tab3, tab4 = st.tabs(["🌸 Research Philosophy", "🔬 Diagnostic Studio", "📊 Batch Processing", "📜 Historical Registry"])
 
-# --- TAB 1: SUBSTANTIAL OVERVIEW ---
-with tabs[0]:
-    col_left, col_right = st.columns([3, 2])
-    with col_left:
-        st.subheader("Automating Botanical Discovery")
+# --- TAB 1: SUBSTANTIAL & ELEGANT OVERVIEW ---
+with tab1:
+    col_l, col_r = st.columns([3, 2])
+    with col_l:
+        st.write("## The Art of Botanical Precision")
         st.markdown("""
-        **Context & Importance**
-        Philippine *Hoya* species exhibit high morphological complexity, often creating identification bottlenecks for conservationists. 
-        Traditional identification relies on exhaustive 34-feature morphometrics which is labor-intensive and prone to human error.
+        In the delicate world of *Hoya* taxonomy, identification is often a dense thicket of 
+        morphological overlap. This project seeks to harmonize **Biological Geometry** with 
+        **Artificial Intelligence** to preserve the heritage of Philippine flora.
         
-        **The "Golden Trio" Methodology**
-        Through **Recursive Feature Elimination (RFE)** and stability testing, this study identified three master traits that 
-        capture the primary evolutionary signal of the genus:
-        1. **Pollinia Length:** Indicates vertical scale and pollinaria capacity.
-        2. **Pollinia Width:** Defines the lateral geometry of the pollinarium.
-        3. **Corpusculum Length:** The anchor of the pollinarium structure.
+        ### The "Golden Trio" Revelation
+        Traditional taxonomic audits rely on 34 distinct micrometric variables—a process that 
+        is both labor-intensive and prone to subjectivity. Our research, powered by **Recursive 
+        Feature Elimination (RFE)**, has distilled this complexity into a **Golden Trio** of master 
+        traits that serve as the primary evolutionary signatures for the genus:
         
-        **Model Accuracy**
-        Using a regularized Ridge Classifier, the system provides a high-confidence prediction rate of **91.6%** for typical morphotypes, 
-        offering a nature-based technical solution for Botanic Garden and Arboreta management.
+        * **Pollinia Length:** The vertical architecture of the pollen mass.         * **Pollinia Width:** The lateral breadth, defining the geometric clade-signature.
+        * **Corpusculum Length:** The anchor point that dictates structural stability.
+        
+        ### Scientific Integrity
+        By utilizing a **Regularized Ridge Classifier**, we achieve a high-fidelity prediction 
+        accuracy of **91.6%**. This provides Botanic Garden curators and Arboreta managers with 
+        a nature-based technical solution to catalogue diversity with unprecedented speed.
         """)
-    with col_right:
-        st.info("**Reference Morphospace**")
+    with col_r:
+        st.write("### Reference Morphospace")
         fig_ref = px.scatter_3d(df, x='pollinia_length', y='pollinia_width', z='corpusculum_length', 
-                                color='clade', template="plotly_white", opacity=0.6)
-        fig_ref.update_layout(height=400, margin=dict(l=0,r=0,b=0,t=0), scene_camera=dict(eye=dict(x=1.5, y=1.5, z=1.5)))
+                                color='clade', color_discrete_sequence=px.colors.qualitative.Antique,
+                                template="plotly_white", opacity=0.7)
+        fig_ref.update_layout(height=500, margin=dict(l=0,r=0,b=0,t=0), scene_camera=dict(eye=dict(x=1.8, y=1.8, z=1.8)))
         st.plotly_chart(fig_ref, use_container_width=True)
 
-# --- TAB 2: DIAGNOSTIC LAB ---
-with tabs[1]:
-    col_in, col_out = st.columns([1, 2])
+# --- TAB 2: FANCY DIAGNOSTIC STUDIO ---
+with tab2:
+    st.write("## Specimen Identification Studio")
+    col_in, col_spacer, col_out = st.columns([1.5, 0.2, 3])
+    
     with col_in:
-        st.subheader("Manual Entry")
-        s_p_len = st.number_input("Pollinia Length (mm)", 0.0, 10.0, 0.85, step=0.01)
-        s_p_wid = st.number_input("Pollinia Width (mm)", 0.0, 5.0, 0.24, step=0.01)
-        s_c_len = st.number_input("Corpusculum Length (mm)", 0.0, 5.0, 0.28, step=0.01)
-        if st.button("Generate Diagnostic", use_container_width=True):
+        st.write("### Specimen Metrics")
+        s_p_len = st.number_input("Pollinia Length (mm)", 0.0, 10.0, 0.85)
+        s_p_wid = st.number_input("Pollinia Width (mm)", 0.0, 5.0, 0.24)
+        s_c_len = st.number_input("Corpusculum Length (mm)", 0.0, 5.0, 0.28)
+        
+        if st.button("Unveil Identity", use_container_width=True):
             scaled_in = scaler.transform(np.log1p([[s_p_len, s_p_wid, s_c_len]]))
-            probs = get_calibrated_probs(model, scaled_in)
+            probs = get_probs(model, scaled_in)
             conf, pred = np.max(probs), model.classes_[np.argmax(probs)]
             
-            st.session_state.current_result = {"pred": pred, "conf": conf, "data": [s_p_len, s_p_wid, s_c_len]}
+            st.session_state.single_res = {"pred": pred, "conf": conf, "coords": [s_p_len, s_p_wid, s_c_len]}
             st.session_state.test_log.append({
-                "Timestamp": datetime.datetime.now().strftime("%H:%M:%S"), "Sample": "Single", 
-                "P_Len": s_p_len, "P_Wid": s_p_wid, "C_Len": s_c_len, "Prediction": pred, "Confidence": f"{conf:.1%}"
+                "Date": datetime.datetime.now().strftime("%Y-%m-%d"),
+                "Time": datetime.datetime.now().strftime("%H:%M:%S"),
+                "Sample": "Manual Input", "P-Length": s_p_len, "P-Width": s_p_wid, 
+                "C-Length": s_c_len, "Clade Prediction": pred, "Reliability": f"{conf:.1%}"
             })
 
     with col_out:
-        if 'current_result' in st.session_state:
-            res = st.session_state.current_result
-            st.subheader("Classification Result")
+        if 'single_res' in st.session_state:
+            res = st.session_state.single_res
+            st.write(f"<div class='result-card'>", unsafe_allow_html=True)
             
-            c1, c2 = st.columns(2)
-            c1.metric("Predicted Clade", res['pred'])
-            c2.metric("Confidence", f"{res['conf']:.1%}")
+            st.write("### Classification Discovery")
+            m1, m2 = st.columns(2)
+            m1.metric("Clade Identity", res['pred'])
+            m2.metric("Reliability Index", f"{res['conf']:.1%}")
             
-            # Confidence Gauge
-            fig_gauge = go.Figure(go.Indicator(
+            # Fancy Gauge
+            fig_g = go.Figure(go.Indicator(
                 mode = "gauge+number", value = res['conf']*100,
-                domain = {'x': [0, 1], 'y': [0, 1]},
-                gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "#2E7D32"}},
-                title = {'text': "Reliability Index"}))
-            fig_gauge.update_layout(height=250, margin=dict(l=20,r=20,b=20,t=50))
-            st.plotly_chart(fig_gauge, use_container_width=True)
+                gauge = {'axis': {'range': [0, 100]}, 'bar': {'color': "#588157"}, 
+                         'steps': [{'range': [0, 70], 'color': "#F4F4F2"}, {'range': [70, 100], 'color': "#DCE4DC"}]},
+                title = {'text': "Confidence Index (%)", 'font': {'size': 18, 'family': 'Lato'}}))
+            fig_g.update_layout(height=280, margin=dict(l=30,r=30,b=20,t=40), paper_bgcolor="white")
+            st.plotly_chart(fig_g, use_container_width=True)
             
-            # Position in Morphospace
-            st.markdown("**Specimen Position relative to Dataset:**")
-            user_df = pd.concat([df, pd.DataFrame({'pollinia_length':[res['data'][0]],'pollinia_width':[res['data'][1]],'corpusculum_length':[res['data'][2]],'clade':['QUERY']})])
-            fig_pos = px.scatter_3d(user_df, x='pollinia_length', y='pollinia_width', z='corpusculum_length', 
-                                    color='clade', color_discrete_map={'QUERY':'#D32F2F'}, size_max=10)
-            fig_pos.update_layout(height=400, margin=dict(l=0,r=0,b=0,t=0))
-            st.plotly_chart(fig_pos, use_container_width=True)
+            st.write("#### Specimen Orientation")
+            user_df = pd.concat([df, pd.DataFrame({'pollinia_length':[res['coords'][0]],'pollinia_width':[res['coords'][1]],'corpusculum_length':[res['coords'][2]],'clade':['NEW SPECIMEN']})])
+            fig_v = px.scatter_3d(user_df, x='pollinia_length', y='pollinia_width', z='corpusculum_length', 
+                                  color='clade', color_discrete_map={'NEW SPECIMEN':'#A6172D'}, size_max=12, template="plotly_white")
+            fig_v.update_layout(height=400, margin=dict(l=0,r=0,b=0,t=0))
+            st.plotly_chart(fig_v, use_container_width=True)
+            st.write(f"</div>", unsafe_allow_html=True)
+        else:
+            st.info("Awaiting specimen data for identification...")
 
-# --- TAB 3: BATCH ANALYSIS ---
-with tabs[2]:
-    st.subheader("Bulk Specimen Pipeline")
-    st.markdown("Use this tab to identify multiple accessions from a CSV file.")
+# --- TAB 3: BATCH PROCESSING ---
+with tab3:
+    st.write("## Batch Repository Analysis")
+    st.markdown("For large collections, upload your curated dataset in CSV format.")
     
-    with st.expander("Data Formatting Guide", expanded=False):
-        st.write("Ensure your CSV has exactly these headers: `id`, `pollinia_length`, `pollinia_width`, `corpusculum_length`")
-        st.code("id,pollinia_length,pollinia_width,corpusculum_length\nAccession_01,0.85,0.24,0.28")
+    col_up, col_guide = st.columns([2, 1])
+    with col_guide:
+        st.write("### 📜 Format Guide")
+        st.markdown("""
+        1. **id**: Sample name
+        2. **pollinia_length**: (mm)
+        3. **pollinia_width**: (mm)
+        4. **corpusculum_length**: (mm)
+        """)
+        
+    with col_up:
+        up_file = st.file_uploader("Upload Accession Data", type="csv")
+        if up_file:
+            b_df = pd.read_csv(up_file)
+            b_scaled = scaler.transform(np.log1p(b_df[trio]))
+            b_probs = get_probs(model, b_scaled)
+            
+            b_df['Clade Prediction'] = [model.classes_[i] for i in np.argmax(b_probs, axis=1)]
+            b_df['Reliability'] = np.max(b_probs, axis=1)
+            
+            st.write("### Processed Accessions")
+            st.dataframe(b_df.style.format({'Reliability': '{:.1%}'}).background_gradient(subset=['Reliability'], cmap='YlGn'))
+            
+            for _, r in b_df.iterrows():
+                st.session_state.test_log.append({
+                    "Date": datetime.datetime.now().strftime("%Y-%m-%d"),
+                    "Time": datetime.datetime.now().strftime("%H:%M:%S"),
+                    "Sample": r['id'], "P-Length": r['pollinia_length'], "P-Width": r['pollinia_width'], 
+                    "C-Length": r['corpusculum_length'], "Clade Prediction": r['Clade Prediction'], "Reliability": f"{r['Reliability']:.1%}"
+                })
 
-    up_file = st.file_uploader("Upload CSV File", type="csv")
-    if up_file:
-        b_df = pd.read_csv(up_file)
-        b_scaled = scaler.transform(np.log1p(b_df[trio]))
-        b_probs = get_calibrated_probs(model, b_scaled)
-        
-        b_df['Prediction'] = [model.classes_[i] for i in np.argmax(b_probs, axis=1)]
-        b_df['Confidence'] = np.max(b_probs, axis=1)
-        
-        st.dataframe(b_df.style.format({'Confidence': '{:.1%}'}).background_gradient(subset=['Confidence'], cmap='Greens'))
-        
-        for _, r in b_df.iterrows():
-            st.session_state.test_log.append({
-                "Timestamp": datetime.datetime.now().strftime("%H:%M:%S"), "Sample": r['id'], 
-                "P_Len": r['pollinia_length'], "P_Wid": r['pollinia_width'], "C_Len": r['corpusculum_length'], 
-                "Prediction": r['Prediction'], "Confidence": f"{r['Confidence']:.1%}"
-            })
-
-# --- TAB 4: TESTING LOG ---
-with tabs[3]:
-    st.subheader("Historical Session Records")
+# --- TAB 4: HISTORICAL REGISTRY (Legibility Fixed) ---
+with tab4:
+    st.write("## Session Historical Registry")
     if st.session_state.test_log:
-        st.table(pd.DataFrame(st.session_state.test_log))
-        if st.button("Reset Session History"):
+        registry_df = pd.DataFrame(st.session_state.test_log)
+        st.table(registry_df)
+        
+        if st.button("Purge Registry History"):
             st.session_state.test_log = []; st.rerun()
     else:
-        st.info("No diagnostic data generated in this session yet.")
+        st.info("The registry is currently empty.")
