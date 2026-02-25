@@ -7,8 +7,12 @@ from sklearn.linear_model import RidgeClassifier
 from sklearn.preprocessing import RobustScaler
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import balanced_accuracy_score
+from sklearn.calibration import calibration_curve
 from sklearn.covariance import EmpiricalCovariance
+from sklearn.isotonic import IsotonicRegression
+from scipy.special import softmax
 import datetime
+import os
 
 # ============================================================
 # PAGE CONFIG
@@ -20,59 +24,53 @@ st.set_page_config(
 )
 
 # ============================================================
-# CLEAN TAB STYLING
+# CLEAN UI
 # ============================================================
-st.markdown("""
-<style>
-.stTabs [data-baseweb="tab"] {
-    font-size: 18px;
-    font-weight: 600;
-    color: #2E4D32 !important;
-}
-.stTabs [aria-selected="true"] {
-    border-bottom: 4px solid #588157 !important;
-}
-.result-box {
-    background: #FFFFFF;
-    padding: 18px;
-    border-radius: 12px;
-    border: 1px solid #CFE1D6;
-}
-</style>
-""", unsafe_allow_html=True)
+st.title("🌿 Hoya Morpho-ID: AI-Powered Clade-Level Classifier")
+st.caption("Scope: Section/Clade Identification Only (Not Species-Level)")
 
 # ============================================================
-# DATA LOADER (Replace with real dataset later)
+# PRODUCTION DATA LOADING
 # ============================================================
 @st.cache_data
-def load_data():
+def load_dataset():
+
+    # Priority 1: production CSV in repo
+    if os.path.exists("hoya_dataset.csv"):
+        df = pd.read_csv("hoya_dataset.csv")
+        return df
+
+    # Fallback demo dataset
     np.random.seed(42)
     n = 64
     return pd.DataFrame({
-        "species": [f"species_{i}" for i in range(n)],
         "pollinia_length": np.random.uniform(0.2, 5, n),
         "pollinia_width": np.random.uniform(0.1, 2.5, n),
         "corpusculum_length": np.random.uniform(0.05, 3, n),
         "clade": np.random.choice(["Acanthostemma", "Hoya-Complex"], n)
     })
 
-df = load_data()
+df = load_dataset()
 TRIO = ["pollinia_length", "pollinia_width", "corpusculum_length"]
 
 # ============================================================
 # TRAIN MODEL
 # ============================================================
+@st.cache_resource
 def train_model(df):
+
     X = np.log1p(df[TRIO])
     y = df["clade"]
+
     scaler = RobustScaler().fit(X)
     model = RidgeClassifier(alpha=1.0).fit(scaler.transform(X), y)
+
     return model, scaler
 
 model, scaler = train_model(df)
 
 # ============================================================
-# LOOCV + BOOTSTRAP CI
+# LOOCV + CI
 # ============================================================
 def compute_loocv_ci(df, n_boot=300):
 
@@ -88,7 +86,9 @@ def compute_loocv_ci(df, n_boot=300):
         model_local = RidgeClassifier().fit(
             scaler_local.transform(X[tr]), y[tr]
         )
-        pred = model_local.predict(scaler_local.transform(X[te]))
+        pred = model_local.predict(
+            scaler_local.transform(X[te])
+        )
         preds.append(pred[0])
         truths.append(y[te][0])
 
@@ -96,6 +96,7 @@ def compute_loocv_ci(df, n_boot=300):
 
     boot_scores = []
     n = len(truths)
+
     for _ in range(n_boot):
         idx = np.random.choice(n, n, replace=True)
         boot_scores.append(
@@ -105,17 +106,67 @@ def compute_loocv_ci(df, n_boot=300):
             )
         )
 
-    ci_low = np.percentile(boot_scores, 2.5)
-    ci_high = np.percentile(boot_scores, 97.5)
-
-    return base, ci_low, ci_high
+    return base, np.percentile(boot_scores, 2.5), np.percentile(boot_scores, 97.5)
 
 acc, ci_low, ci_high = compute_loocv_ci(df)
 
 # ============================================================
-# OOD PREP
+# CALIBRATION
+# ============================================================
+def compute_probabilities(model, scaler, X_raw):
+
+    X_scaled = scaler.transform(np.log1p(X_raw))
+    decision = model.decision_function(X_scaled)
+
+    if decision.ndim == 1:
+        decision = np.column_stack([-decision, decision])
+
+    probs = softmax(decision, axis=1)
+    return probs
+
+def calibration_plot():
+
+    probs = compute_probabilities(model, scaler, df[TRIO])
+    y_true = (df["clade"] == model.classes_[1]).astype(int)
+
+    frac_pos, mean_pred = calibration_curve(
+        y_true, probs[:,1], n_bins=5
+    )
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=mean_pred,
+        y=frac_pos,
+        mode="lines+markers",
+        name="Model"
+    ))
+    fig.add_trace(go.Scatter(
+        x=[0,1], y=[0,1],
+        mode="lines",
+        name="Perfect"
+    ))
+
+    fig.update_layout(
+        title="Calibration Curve",
+        xaxis_title="Predicted Probability",
+        yaxis_title="Observed Frequency"
+    )
+
+    return fig
+
+# ============================================================
+# CENTROIDS
 # ============================================================
 X_scaled_full = scaler.transform(np.log1p(df[TRIO]))
+centroids_scaled = pd.DataFrame(X_scaled_full, columns=TRIO)
+centroids_scaled["clade"] = df["clade"]
+centroids_scaled = centroids_scaled.groupby("clade").mean()
+
+centroids_raw = np.expm1(centroids_scaled)
+
+# ============================================================
+# OOD DETECTION
+# ============================================================
 cov = EmpiricalCovariance().fit(X_scaled_full)
 train_maha = cov.mahalanobis(X_scaled_full)
 OOD_THRESHOLD = float(np.percentile(train_maha, 95))
@@ -127,34 +178,33 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # ============================================================
-# TITLE
-# ============================================================
-st.title("🌿 Hoya Morpho-ID: AI-Powered Clade-Level Classifier")
-st.caption("Scope: Section/Clade Identification Only (Not Species-Level)")
-
-# ============================================================
 # TABS
 # ============================================================
 tab1, tab2, tab3, tab4 = st.tabs([
     "📘 Background",
     "🔬 Single Sample",
-    "📊 Batch Analysis",
-    "📜 Test History"
+    "📊 Calibration & Model",
+    "📜 History"
 ])
 
 # ============================================================
-# TAB 1 — BACKGROUND
+# BACKGROUND
 # ============================================================
 with tab1:
 
-    st.header("Research Context")
+    st.header("Model Information")
+
+    st.write(f"Balanced Accuracy (LOOCV): {acc*100:.2f}%")
+    st.write(f"95% CI: [{ci_low*100:.2f}% – {ci_high*100:.2f}%]")
 
     st.write("""
-This application performs **clade-level classification**
-based on micrometric pollinium measurements.
+Golden Trio:
+• Pollinia Length  
+• Pollinia Width  
+• Corpusculum Length  
 
-It does NOT perform species-level identification
-and does NOT replace molecular phylogenetic analysis.
+Full Morphometric Framework:
+• 34 engineered features (core + ratios + derived indices)
 """)
 
     st.warning("""
@@ -164,123 +214,106 @@ Model Scope Notice:
 • Not a replacement for molecular phylogenetics
 """)
 
-    st.subheader("Clades Currently Covered")
-    for c in sorted(df["clade"].unique()):
-        st.write(f"• {c}")
-
-    st.subheader("Feature Architecture")
-    st.write("""
-Total Engineered Feature Space: 34 Features
-• 11 Core Micrometrics  
-• 11 Geometric Ratios  
-• 12 Derived Morphometric Indices
-""")
-
-    st.info("""
-Golden Trio (Dominant Predictors):
-• Pollinia Length  
-• Pollinia Width  
-• Corpusculum Length
-""")
-
-    st.subheader("Model Performance")
-
-    st.write(f"Balanced Accuracy (LOOCV): {acc*100:.2f}%")
-    st.write(f"95% Confidence Interval: [{ci_low*100:.2f}% – {ci_high*100:.2f}%]")
-
 # ============================================================
-# TAB 2 — SINGLE SAMPLE
+# SINGLE SAMPLE
 # ============================================================
 with tab2:
 
-    col1, col2 = st.columns([1, 2])
+    col1, col2 = st.columns([1,2])
 
     with col1:
-        p_l = st.number_input("Pollinia Length (mm)", 0.0, 10.0, 0.8)
-        p_w = st.number_input("Pollinia Width (mm)", 0.0, 5.0, 0.25)
-        c_l = st.number_input("Corpusculum Length (mm)", 0.0, 5.0, 0.3)
+        p_l = st.number_input("Pollinia Length", 0.0, 10.0, 0.8)
+        p_w = st.number_input("Pollinia Width", 0.0, 5.0, 0.25)
+        c_l = st.number_input("Corpusculum Length", 0.0, 5.0, 0.3)
 
-        if st.button("Run Diagnosis"):
+        if st.button("Diagnose"):
 
-            x = np.log1p([[p_l, p_w, c_l]])
-            x_scaled = scaler.transform(x)
+            X_input = np.array([[p_l, p_w, c_l]])
+            probs = compute_probabilities(model, scaler, X_input)
+            pred = model.classes_[np.argmax(probs)]
 
-            pred = model.predict(x_scaled)[0]
+            maha = float(
+                cov.mahalanobis(
+                    scaler.transform(np.log1p(X_input))
+                )[0]
+            )
 
-            maha = float(cov.mahalanobis(x_scaled)[0])
-            ood = maha > OOD_THRESHOLD
+            # Bayesian uncertainty (Dirichlet approximation)
+            alpha = probs[0] * len(df)
+            posterior_mean = alpha / np.sum(alpha)
+            entropy = -np.sum(posterior_mean * np.log(posterior_mean + 1e-9))
 
-            st.session_state.current_result = (pred, maha, ood)
+            st.session_state.current = (pred, probs[0], maha, entropy)
 
             st.session_state.history.append({
                 "Timestamp": datetime.datetime.now(),
-                "Pollinia_Length": p_l,
-                "Pollinia_Width": p_w,
-                "Corpusculum_Length": c_l,
                 "Prediction": pred,
-                "Mahalanobis_Distance": maha,
-                "OOD": ood
+                "Mahalanobis": maha,
+                "Entropy": entropy
             })
 
     with col2:
-        if "current_result" in st.session_state:
+        if "current" in st.session_state:
 
-            pred, maha, ood = st.session_state.current_result
+            pred, probs, maha, entropy = st.session_state.current
 
-            st.markdown("<div class='result-box'>", unsafe_allow_html=True)
             st.subheader(f"Prediction: {pred}")
             st.write(f"Mahalanobis Distance: {maha:.3f}")
-            st.markdown("</div>", unsafe_allow_html=True)
+            st.write(f"Predictive Entropy (Uncertainty): {entropy:.3f}")
 
-            if ood:
-                st.error("⚠️ Out-of-Distribution: Outside training morphology.")
+            if maha > OOD_THRESHOLD:
+                st.error("⚠️ Out-of-Distribution")
             else:
                 st.success("Within Training Distribution")
 
+            # 3D Plot with centroid overlay
             fig = px.scatter_3d(
                 df,
                 x="pollinia_length",
                 y="pollinia_width",
                 z="corpusculum_length",
-                color="clade"
+                color="clade",
+                opacity=0.4
             )
+
+            # Add centroids
+            for clade in centroids_raw.index:
+                fig.add_trace(go.Scatter3d(
+                    x=[centroids_raw.loc[clade, "pollinia_length"]],
+                    y=[centroids_raw.loc[clade, "pollinia_width"]],
+                    z=[centroids_raw.loc[clade, "corpusculum_length"]],
+                    mode="markers",
+                    marker=dict(size=8, symbol="diamond"),
+                    name=f"{clade} Centroid"
+                ))
+
             fig.add_trace(go.Scatter3d(
-                x=[p_l],
-                y=[p_w],
-                z=[c_l],
+                x=[p_l], y=[p_w], z=[c_l],
                 mode="markers",
-                marker=dict(size=8, color="red"),
+                marker=dict(size=10, color="red"),
                 name="Specimen"
             ))
+
             st.plotly_chart(fig, use_container_width=True)
 
 # ============================================================
-# TAB 3 — BATCH
+# CALIBRATION TAB
 # ============================================================
 with tab3:
-
-    st.write("Upload CSV with columns:")
-    st.code("pollinia_length,pollinia_width,corpusculum_length")
-
-    file = st.file_uploader("Upload File", type="csv")
-
-    if file:
-        bdf = pd.read_csv(file)
-        x_scaled = scaler.transform(np.log1p(bdf[TRIO]))
-        bdf["Prediction"] = model.predict(x_scaled)
-        st.dataframe(bdf)
+    st.header("Calibration & Reliability")
+    st.plotly_chart(calibration_plot(), use_container_width=True)
 
 # ============================================================
-# TAB 4 — HISTORY
+# HISTORY
 # ============================================================
 with tab4:
 
     if st.session_state.history:
-        hist_df = pd.DataFrame(st.session_state.history)
-        st.dataframe(hist_df)
+        hist = pd.DataFrame(st.session_state.history)
+        st.dataframe(hist)
         st.download_button(
-            "Download History",
-            hist_df.to_csv(index=False),
+            "Download CSV",
+            hist.to_csv(index=False),
             "hoya_history.csv"
         )
     else:
