@@ -219,7 +219,7 @@ with tab2:
             pred = model.predict(x_scaled)[0]
 
             # OOD check
-            maha = cov.mahalanobis(x_scaled)[0]
+            maha = float(cov.mahalanobis(x_scaled)[0])
             ood = maha > OOD_THRESHOLD
 
             # Save history
