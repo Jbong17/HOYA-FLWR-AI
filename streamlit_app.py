@@ -156,8 +156,9 @@ making clade-level discrimination a non-trivial classification task.
 This system operationalizes micrometric pollinium morphology into a structured,
 statistically validated machine learning framework.
 
-The model performs **Section/Clade-level identification only** using quantitative
-morphometric descriptors derived from floral reproductive structures.
+The deployed model performs **Section/Clade-level identification only**
+using quantitative morphometric descriptors derived from floral
+reproductive structures.
 """)
 
     st.warning("""
@@ -224,46 +225,78 @@ Total Engineered Feature Space: **34 Morphometric Descriptors**
 """)
 
     # --------------------------------------------------------
-    # Golden Trio Emphasis
+    # Golden Trio
     # --------------------------------------------------------
     st.subheader("✨ The 'Golden Trio' Discovery")
 
-    st.info("""
-Through dimensionality reduction and feature importance analysis,
-three dominant predictors consistently explain the majority of clade-level variance:
+    st.markdown("""
+Initial modeling with the full 34-feature space suffered from
+variance inflation and overparameterization relative to sample size,
+yielding **57.81% overall accuracy**.
 
-• **Pollinia Length**  
-• **Pollinia Width**  
-• **Corpusculum Length**
+Feature pruning identified three dominant predictors — termed
+the **"Golden Trio"**:
 
-These form the operational inference backbone of the deployed classifier.
+• Pollinia Length  
+• Pollinia Width  
+• Corpusculum Length  
+
+Restricting the model to these three variables increased
+accuracy to **71.88%**, demonstrating improved stability
+and better bias–variance balance.
 """)
 
     # --------------------------------------------------------
-    # Model Information
+    # Selective Prediction
     # --------------------------------------------------------
-    st.subheader("🧠 Model Architecture")
+    st.subheader("🎯 Confidence-Threshold Optimization")
 
     st.markdown("""
-**Algorithm:** Regularized Ridge Classifier  
-**Preprocessing:** Log1p Transformation + Robust Scaling  
-**Validation Strategy:** Leave-One-Out Cross-Validation (LOOCV)  
-**Imbalance Handling:** Balanced Accuracy Metric  
+By integrating a confidence-threshold filter (τ = 0.70),
+the classifier achieved **91.67% accuracy on high-confidence samples**.
+
+This selective prediction strategy restricts inference to
+morphometrically separable regions of feature space,
+allowing effective differentiation of the *Hoya*-complex
+from other lineages.
+
+Note: This value reflects conditional accuracy and does not
+represent global model performance.
 """)
 
     # --------------------------------------------------------
-    # Performance
+    # Angustifolia Paradox
     # --------------------------------------------------------
-    st.subheader("📊 Model Performance")
+    st.subheader("🧠 The 'Angustifolia Paradox'")
+
+    st.markdown("""
+A notable finding emerged during evaluation:
+
+*Hoya angustifolia* (Acanthostemma) consistently mimics
+Hoya-complex morphology, reaching prediction confidence levels
+as high as **99.8%**.
+
+This phenomenon suggests strong morphological convergence
+between lineages and highlights the inherent limitation of
+purely morphometric classification approaches.
+
+The paradox underscores the continued necessity of molecular
+phylogenetic validation for definitive taxonomic resolution.
+""")
+
+    # --------------------------------------------------------
+    # Deployment Metrics
+    # --------------------------------------------------------
+    st.subheader("📊 Current Deployment Performance")
 
     st.write(f"Balanced Accuracy (LOOCV): **{acc*100:.2f}%**")
     st.write(f"95% Bootstrap Confidence Interval: **[{ci_low*100:.2f}% – {ci_high*100:.2f}%]**")
 
     st.caption("""
-Performance estimates are derived from strict LOOCV to mitigate small-sample bias.
-Confidence intervals computed via non-parametric bootstrap resampling.
+Deployment metrics reflect strict Leave-One-Out Cross-Validation
+on the currently loaded dataset using the Golden Trio feature set.
+Bootstrap confidence intervals are derived via non-parametric resampling.
 """)
-
 # ============================================================
 # TAB 2 — SINGLE SAMPLE
 # ============================================================
