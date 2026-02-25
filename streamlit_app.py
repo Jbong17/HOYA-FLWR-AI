@@ -7,27 +7,23 @@ from sklearn.linear_model import RidgeClassifier
 from sklearn.preprocessing import RobustScaler
 from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import balanced_accuracy_score
-from sklearn.calibration import calibration_curve
 from sklearn.covariance import EmpiricalCovariance
 import datetime
 
-# ------------------------------------------------------------
+# ============================================================
 # PAGE CONFIG
-# ------------------------------------------------------------
+# ============================================================
 st.set_page_config(
     page_title="Hoya Morpho-ID (Clade-Level)",
     page_icon="🌿",
     layout="wide"
 )
 
-# ------------------------------------------------------------
-# CLEAN TAB STYLING (LEGIBLE)
-# ------------------------------------------------------------
+# ============================================================
+# CLEAN TAB STYLING
+# ============================================================
 st.markdown("""
 <style>
-.stTabs [data-baseweb="tab-list"] {
-    gap: 20px;
-}
 .stTabs [data-baseweb="tab"] {
     font-size: 18px;
     font-weight: 600;
@@ -36,38 +32,36 @@ st.markdown("""
 .stTabs [aria-selected="true"] {
     border-bottom: 4px solid #588157 !important;
 }
-.result-card {
-    background: white;
-    padding: 20px;
+.result-box {
+    background: #FFFFFF;
+    padding: 18px;
     border-radius: 12px;
     border: 1px solid #CFE1D6;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ------------------------------------------------------------
-# DATA
-# ------------------------------------------------------------
+# ============================================================
+# DATA LOADER (Replace with real dataset later)
+# ============================================================
 @st.cache_data
 def load_data():
-    # Replace with real dataset later
     np.random.seed(42)
     n = 64
-    df = pd.DataFrame({
+    return pd.DataFrame({
         "species": [f"species_{i}" for i in range(n)],
         "pollinia_length": np.random.uniform(0.2, 5, n),
         "pollinia_width": np.random.uniform(0.1, 2.5, n),
         "corpusculum_length": np.random.uniform(0.05, 3, n),
         "clade": np.random.choice(["Acanthostemma", "Hoya-Complex"], n)
     })
-    return df
 
 df = load_data()
 TRIO = ["pollinia_length", "pollinia_width", "corpusculum_length"]
 
-# ------------------------------------------------------------
-# MODEL TRAINING
-# ------------------------------------------------------------
+# ============================================================
+# TRAIN MODEL
+# ============================================================
 def train_model(df):
     X = np.log1p(df[TRIO])
     y = df["clade"]
@@ -77,10 +71,10 @@ def train_model(df):
 
 model, scaler = train_model(df)
 
-# ------------------------------------------------------------
+# ============================================================
 # LOOCV + BOOTSTRAP CI
-# ------------------------------------------------------------
-def compute_loocv_ci(df, n_boot=500):
+# ============================================================
+def compute_loocv_ci(df, n_boot=300):
 
     X = np.log1p(df[TRIO].values)
     y = df["clade"].values
@@ -90,9 +84,11 @@ def compute_loocv_ci(df, n_boot=500):
     truths = []
 
     for tr, te in loo.split(X):
-        scaler = RobustScaler().fit(X[tr])
-        model = RidgeClassifier().fit(scaler.transform(X[tr]), y[tr])
-        pred = model.predict(scaler.transform(X[te]))
+        scaler_local = RobustScaler().fit(X[tr])
+        model_local = RidgeClassifier().fit(
+            scaler_local.transform(X[tr]), y[tr]
+        )
+        pred = model_local.predict(scaler_local.transform(X[te]))
         preds.append(pred[0])
         truths.append(y[te][0])
 
@@ -100,7 +96,6 @@ def compute_loocv_ci(df, n_boot=500):
 
     boot_scores = []
     n = len(truths)
-
     for _ in range(n_boot):
         idx = np.random.choice(n, n, replace=True)
         boot_scores.append(
@@ -117,34 +112,32 @@ def compute_loocv_ci(df, n_boot=500):
 
 acc, ci_low, ci_high = compute_loocv_ci(df)
 
-# ------------------------------------------------------------
-# OOD SUPPORT
-# ------------------------------------------------------------
+# ============================================================
+# OOD PREP
+# ============================================================
 X_scaled_full = scaler.transform(np.log1p(df[TRIO]))
 cov = EmpiricalCovariance().fit(X_scaled_full)
 train_maha = cov.mahalanobis(X_scaled_full)
-OOD_THRESHOLD = np.percentile(train_maha, 95)
+OOD_THRESHOLD = float(np.percentile(train_maha, 95))
 
-# ------------------------------------------------------------
-# SESSION LOG
-# ------------------------------------------------------------
+# ============================================================
+# SESSION STATE
+# ============================================================
 if "history" not in st.session_state:
     st.session_state.history = []
 
-# ------------------------------------------------------------
+# ============================================================
 # TITLE
-# ------------------------------------------------------------
-st.markdown("""
-# 🌿 Hoya Morpho-ID: AI-Powered Clade-Level Classifier
-### Scope: Section/Clade Identification Only (Not Species-Level)
-""")
+# ============================================================
+st.title("🌿 Hoya Morpho-ID: AI-Powered Clade-Level Classifier")
+st.caption("Scope: Section/Clade Identification Only (Not Species-Level)")
 
-# ------------------------------------------------------------
+# ============================================================
 # TABS
-# ------------------------------------------------------------
+# ============================================================
 tab1, tab2, tab3, tab4 = st.tabs([
     "📘 Background",
-    "🔬 Single Sample Diagnosis",
+    "🔬 Single Sample",
     "📊 Batch Analysis",
     "📜 Test History"
 ])
@@ -157,11 +150,11 @@ with tab1:
     st.header("Research Context")
 
     st.write("""
-This application performs **clade-level classification** based on
-micrometric pollinium measurements.
+This application performs **clade-level classification**
+based on micrometric pollinium measurements.
 
-It does NOT perform species-level identification and does NOT replace
-molecular phylogenetic analysis.
+It does NOT perform species-level identification
+and does NOT replace molecular phylogenetic analysis.
 """)
 
     st.warning("""
@@ -176,12 +169,11 @@ Model Scope Notice:
         st.write(f"• {c}")
 
     st.subheader("Feature Architecture")
-
     st.write("""
-**Total Engineered Feature Space: 34 Dimensions**
-• Core Micrometrics (11)
-• Geometric Ratios (11)
-• Derived Morphometric Indices (12)
+Total Engineered Feature Space: 34 Features
+• 11 Core Micrometrics  
+• 11 Geometric Ratios  
+• 12 Derived Morphometric Indices
 """)
 
     st.info("""
@@ -191,14 +183,10 @@ Golden Trio (Dominant Predictors):
 • Corpusculum Length
 """)
 
-    st.subheader("Model & Validation")
+    st.subheader("Model Performance")
 
-    st.markdown(f"""
-**Regularized Ridge Classifier (Clade-Level Model)**  
-Validation: Leave-One-Out Cross-Validation  
-Balanced Accuracy: **{acc*100:.2f}%**  
-95% Confidence Interval: [{ci_low*100:.2f}% – {ci_high*100:.2f}%]
-""")
+    st.write(f"Balanced Accuracy (LOOCV): {acc*100:.2f}%")
+    st.write(f"95% Confidence Interval: [{ci_low*100:.2f}% – {ci_high*100:.2f}%]")
 
 # ============================================================
 # TAB 2 — SINGLE SAMPLE
@@ -216,13 +204,14 @@ with tab2:
 
             x = np.log1p([[p_l, p_w, c_l]])
             x_scaled = scaler.transform(x)
+
             pred = model.predict(x_scaled)[0]
 
-            # OOD check
             maha = float(cov.mahalanobis(x_scaled)[0])
             ood = maha > OOD_THRESHOLD
 
-            # Save history
+            st.session_state.current_result = (pred, maha, ood)
+
             st.session_state.history.append({
                 "Timestamp": datetime.datetime.now(),
                 "Pollinia_Length": p_l,
@@ -230,24 +219,21 @@ with tab2:
                 "Corpusculum_Length": c_l,
                 "Prediction": pred,
                 "Mahalanobis_Distance": maha,
-                "OOD_Flag": ood
+                "OOD": ood
             })
-
-            st.session_state.current_result = (pred, maha, ood)
 
     with col2:
         if "current_result" in st.session_state:
+
             pred, maha, ood = st.session_state.current_result
 
-            st.markdown(f"""
-            <div class='result-card'>
-            <h3>Prediction: {pred}</h3>
-            <p>Mahalanobis Distance: {maha:.3f}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown("<div class='result-box'>", unsafe_allow_html=True)
+            st.subheader(f"Prediction: {pred}")
+            st.write(f"Mahalanobis Distance: {maha:.3f}")
+            st.markdown("</div>", unsafe_allow_html=True)
 
             if ood:
-                st.error("⚠️ Out-of-Distribution: Specimen outside training morphology.")
+                st.error("⚠️ Out-of-Distribution: Outside training morphology.")
             else:
                 st.success("Within Training Distribution")
 
