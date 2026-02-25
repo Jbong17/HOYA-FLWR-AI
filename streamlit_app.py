@@ -13,18 +13,48 @@ st.set_page_config(page_title="Hoya Morpho-ID AI", page_icon="🌿", layout="wid
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap');
+    
     .stApp { background-color: #FAFAF8; color: #4A5D4E; font-family: 'Lato', sans-serif; }
     h1, h2, h3 { font-family: 'Playfair Display', serif; color: #2E4D32; font-style: italic; }
     
-    /* Result Cards & Tables */
-    .result-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #E9EDE9; margin-bottom: 20px; color: #2E4D32; text-align: center; }
-    [data-testid="stTable"] { background-color: white; border-radius: 15px; }
-    [data-testid="stTable"] td { color: #2E4D32 !important; }
-    [data-testid="stTable"] th { background-color: #588157 !important; color: white !important; }
+    /* FIX: Tab Visibility - Making them always legible */
+    .stTabs [data-baseweb="tab-list"] { 
+        gap: 15px; 
+        background-color: #E8EDE7; 
+        padding: 10px 15px 0px 15px; 
+        border-radius: 15px 15px 0 0; 
+    }
+    .stTabs [data-baseweb="tab"] { 
+        height: 50px; 
+        color: #2E4D32 !important; /* Forces visibility */
+        font-weight: 600; 
+        font-size: 16px; 
+    }
+    .stTabs [aria-selected="true"] { 
+        background-color: #FFFFFF !important; 
+        border-bottom: 4px solid #A3B18A !important; 
+    }
     
-    /* Input Fields Style */
-    .stNumberInput input { border-radius: 10px !important; }
+    /* Feature List Styling */
+    .feature-category {
+        font-family: 'Playfair Display', serif;
+        font-size: 24px;
+        color: #588157;
+        margin-top: 20px;
+        margin-bottom: 5px;
+        border-bottom: 1px solid #E8EDE7;
+    }
+    .feature-list {
+        font-size: 15px;
+        line-height: 1.6;
+        color: #4A5D4E;
+        margin-bottom: 20px;
+        padding-left: 10px;
+    }
+
+    .result-card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #E9EDE9; color: #2E4D32; text-align: center; }
+    [data-testid="stTable"] th { background-color: #588157 !important; color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -50,50 +80,37 @@ if 'test_log' not in st.session_state: st.session_state.test_log = []
 
 # --- APP LAYOUT ---
 st.write("<h1 style='text-align: center; color: #2E4D32;'>🌿 Hoya Morpho-ID: AI-Powered Taxonomic Classifier</h1>", unsafe_allow_html=True)
-st.write("<p style='text-align: center; color: #7A8B7C; font-style: italic;'>Utilizing Machine Learning for Precision Morphometric Analysis</p>", unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["🏛️ App Background and Overview", "🔬 Single Sample Diagnostic Facility", "📊 Batch Processing", "📜 Historical Registry"])
 
-# --- TAB 1: BACKGROUND & FEATURE TABLE ---
+# --- TAB 1: BACKGROUND & REFINED LIST ---
 with tab1:
     col_l, col_r = st.columns([1.8, 1.2])
     with col_l:
         st.write("### 📜 The Research Context")
-        st.write("""
-        Taxonomic classification within the Philippine *Hoya* genus is traditionally a resource-intensive endeavor. 
-        Standard identification keys require the measurement of dozens of microscopic structures. This AI-powered 
-        application democratizes expert-level identification through a nature-based technical solution.
-        """)
+        st.write("Taxonomic classification within the Philippine *Hoya* genus is traditionally a resource-intensive endeavor. This AI-powered application democratizes expert-level identification through a nature-based technical solution.")
         
         st.write("### 🔍 High-Dimensional Feature Analysis")
-        feature_data = {
-            "Category": ["Core Dimensions (11)", "Geometric Ratios (11)", "Derived Estimates (12)"],
-            "Features": [
-                "Pollinia Length, Pollinia Width, Corpusculum Length, Corpusculum Width, Shoulder Width, Waist Width, Hips Width, Base Extension, Translator Arm Length, Translator Stalk, Total Structure Length.",
-                "Pollinia Aspect Ratio, Corpusculum Aspect Ratio, P/C Length Ratio, P/C Width Ratio, Shoulder-to-Waist Taper, Waist-to-Hips Ratio, Translator-to-Pollinia Ratio, Extension-to-Length Ratio, Shoulder-to-Hips Ratio, Stalk-to-Arm Ratio, Total Width Index.",
-                "Estimated Pollinia Area, Estimated Corpusculum Area, Relative Shoulder Position, Log-transformed Lengths (P & C), Sqrt-Area transformations, Squared Width deviations, Length-Width interaction terms, Normalized Volumetric Indices, Asymmetry Coefficients."
-            ]
-        }
-        st.table(pd.DataFrame(feature_data))
+        
+        # Vertically Aligned High-Contrast List
+        st.markdown("""
+        <div class="feature-category">Core Dimensions (11)</div>
+        <div class="feature-list">Pollinia Length, Pollinia Width, Corpusculum Length, Corpusculum Width, Shoulder Width, Waist Width, Hips Width, Base Extension, Translator Arm Length, Translator Stalk, Total Structure Length.</div>
+        
+        <div class="feature-category">Geometric Ratios (11)</div>
+        <div class="feature-list">Pollinia Aspect Ratio, Corpusculum Aspect Ratio, P/C Length Ratio, P/C Width Ratio, Shoulder-to-Waist Taper, Waist-to-Hips Ratio, Translator-to-Pollinia Ratio, Extension-to-Length Ratio, Shoulder-to-Hips Ratio, Stalk-to-Arm Ratio, Total Width Index.</div>
+        
+        <div class="feature-category">Derived Estimates (12)</div>
+        <div class="feature-list">Estimated Pollinia Area, Estimated Corpusculum Area, Relative Shoulder Position, Log-transformed Lengths (P & C), Sqrt-Area transformations, Squared Width deviations, Length-Width interaction terms, Normalized Volumetric Indices, Asymmetry Coefficients.</div>
+        """, unsafe_allow_html=True)
 
         st.write("### ✨ The 'Golden Trio' Revelation")
-        st.info("Our research using **Recursive Feature Elimination (RFE)** distilled the 34 features into a 'Golden Trio' of master traits: **Pollinia Length**, **Pollinia Width**, and **Corpusculum Length**.")
+        st.info("Our research distilled the 34 features into a **'Golden Trio'** of master traits: **Pollinia Length**, **Pollinia Width**, and **Corpusculum Length**.")
 
     with col_r:
         st.write("### 🔬 AI Model Performance")
-        st.write("**Sample Size (n):** 64 Specimens")
-        st.markdown("""
-        <div style='background:white; padding:20px; border-radius:15px; border:1px solid #588157; color: #2E4D32;'>
-            <h4>Regularized Ridge Classifier</h4>
-            <hr>
-            <p><b>Performance Accuracy:</b></p>
-            <h2 style='margin:0; color: #588157;'>91.67%</h2>
-            <small>*Leave-One-Out Cross-Validation (LOOCV)</small>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Static Reference Plot
-        fig_ref = px.scatter_3d(df, x='pollinia_length', y='pollinia_width', z='corpusculum_length', color='clade', color_discrete_sequence=px.colors.qualitative.Antique, template="plotly_white")
+        st.markdown("<div style='background:white; padding:20px; border-radius:15px; border:1px solid #588157; color: #2E4D32;'><h4>Regularized Ridge Classifier</h4><hr><p>Performance Accuracy:</p><h2 style='margin:0; color: #588157;'>91.67%</h2><small>*LOOCV Validation</small></div>", unsafe_allow_html=True)
+        fig_ref = px.scatter_3d(df, x='pollinia_length', y='pollinia_width', z='corpusculum_length', color='clade', template="plotly_white")
         fig_ref.update_layout(height=400, margin=dict(l=0,r=0,b=0,t=0), showlegend=False)
         st.plotly_chart(fig_ref, use_container_width=True)
 
@@ -105,7 +122,6 @@ with tab2:
         p_l = st.number_input("Pollinia Length (mm)", 0.0, 10.0, 0.85, step=0.01)
         p_w = st.number_input("Pollinia Width (mm)", 0.0, 5.0, 0.24, step=0.01)
         c_l = st.number_input("Corpusculum Length (mm)", 0.0, 5.0, 0.28, step=0.01)
-        
         if st.button("Generate Diagnostic Report", use_container_width=True):
             s_in = scaler.transform(np.log1p([[p_l, p_w, c_l]]))
             probs = get_probs(model, s_in); conf = np.max(probs); pred = model.classes_[np.argmax(probs)]
@@ -115,46 +131,30 @@ with tab2:
     with col_out:
         if 'res' in st.session_state:
             res = st.session_state.res
-            st.markdown(f"""
-            <div class='result-card'>
-                <h3 style='margin:0;'>Diagnostic Outcome: {res['pred']}</h3>
-                <h2 style='color:#588157; margin:10px 0;'>Confidence: {res['conf']:.1%}</h2>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Interactive Outcome Plot
+            st.markdown(f"<div class='result-card'><h3 style='margin:0;'>Diagnostic Outcome: {res['pred']}</h3><h2 style='color:#588157; margin:10px 0;'>Confidence: {res['conf']:.1%}</h2></div>", unsafe_allow_html=True)
             fig_out = px.scatter_3d(df, x='pollinia_length', y='pollinia_width', z='corpusculum_length', color='clade', opacity=0.4, template="plotly_white")
-            fig_out.add_trace(go.Scatter3d(x=[res['data'][0]], y=[res['data'][1]], z=[res['data'][2]], mode='markers', marker=dict(size=12, color='red', symbol='cross'), name='Current Specimen'))
+            fig_out.add_trace(go.Scatter3d(x=[res['data'][0]], y=[res['data'][1]], z=[res['data'][2]], mode='markers', marker=dict(size=12, color='red', symbol='cross'), name='Specimen'))
             fig_out.update_layout(height=500, margin=dict(l=0,r=0,b=0,t=0))
             st.plotly_chart(fig_out, use_container_width=True)
-        else:
-            st.info("Input metrics and run diagnostic to view visualization.")
 
 # --- TAB 3: BATCH PROCESSING ---
 with tab3:
     col_up, col_guide = st.columns([2, 1])
     with col_guide:
         st.write("### 📂 CSV Format Guide")
-        st.info("Ensure your file headers match exactly: `id`, `pollinia_length`, `pollinia_width`, `corpusculum_length`.")
-        st.code("id,pollinia_length,pollinia_width,corpusculum_length\nAccession_01,0.85,0.24,0.28")
-        
+        st.code("id,pollinia_length,pollinia_width,corpusculum_length\nSample01,0.85,0.24,0.28")
     with col_up:
         up = st.file_uploader("Upload Batch Analysis File", type="csv")
         if up:
             b_df = pd.read_csv(up); b_sc = scaler.transform(np.log1p(b_df[trio])); b_pr = get_probs(model, b_sc)
             b_df['Prediction'] = [model.classes_[i] for i in np.argmax(b_pr, axis=1)]; b_df['Confidence'] = np.max(b_pr, axis=1)
-            st.write("### Analysis Results")
             st.dataframe(b_df.style.format({'Confidence': '{:.1%}'}).background_gradient(cmap='YlGn'))
-            for _, r in b_df.iterrows():
-                st.session_state.test_log.append({"Time": datetime.datetime.now().strftime("%H:%M:%S"), "Sample": r['id'], "P_L": r[trio[0]], "P_W": r[trio[1]], "C_L": r[trio[2]], "Result": r['Prediction'], "Confidence": f"{r['Confidence']:.1%}"})
 
 # --- TAB 4: HISTORICAL REGISTRY ---
 with tab4:
     if st.session_state.test_log:
         df_log = pd.DataFrame(st.session_state.test_log)
         st.table(df_log)
-        c1, c2 = st.columns(2)
-        c1.download_button("📥 Export CSV Registry", df_log.to_csv(index=False), "hoya_registry.csv", "text/csv")
-        if c2.button("🗑️ Purge Local History"): st.session_state.test_log = []; st.rerun()
+        st.download_button("📥 Export CSV Registry", df_log.to_csv(index=False), "hoya_registry.csv", "text/csv")
     else:
         st.info("No records found in current session.")
