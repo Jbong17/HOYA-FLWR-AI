@@ -160,15 +160,22 @@ html, body, [class*="css"], .stApp {
     white-space: nowrap;
     overflow: visible;
 }
+/* Defensively use !important on the centered hero text so Streamlit's
+   default `[data-testid="stMarkdownContainer"] p` rules cannot override. */
+.hoya-hero,
+.hoya-hero p,
+.hoya-hero h1 {
+    text-align: center !important;
+}
 .hoya-tagline {
-    font-family: 'Inter', sans-serif;
-    font-size: clamp(1.02rem, 1.6vw, 1.15rem);
-    font-weight: 400;
-    color: var(--ink-muted);
-    text-align: center;
-    line-height: 1.65;
-    max-width: 58ch;
-    margin: 0 auto 2.2rem auto;
+    font-family: 'Inter', sans-serif !important;
+    font-size: clamp(1.02rem, 1.6vw, 1.15rem) !important;
+    font-weight: 400 !important;
+    color: var(--ink-muted) !important;
+    text-align: center !important;
+    line-height: 1.65 !important;
+    max-width: 58ch !important;
+    margin: 0 auto 2.2rem auto !important;
 }
 .hoya-rule {
     height: 1px;
