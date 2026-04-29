@@ -302,47 +302,100 @@ html, body, [class*="css"], .stApp {
     color: var(--ink-muted) !important;
 }
 
-/* ─── Primary button ─── */
-.stButton > button {
-    background: var(--forest-deep);
-    color: var(--paper);
-    border: 1px solid var(--forest-deep);
-    border-radius: 999px;
-    padding: 0.85rem 2.4rem;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.92rem;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    box-shadow: none;
+/* ─── Primary button (also applied to download button) ─── */
+.stButton > button,
+.stDownloadButton > button {
+    background: var(--forest-deep) !important;
+    color: var(--paper) !important;
+    border: 1px solid var(--forest-deep) !important;
+    border-radius: 999px !important;
+    padding: 0.85rem 2.4rem !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.92rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.04em !important;
+    box-shadow: none !important;
     transition: transform 0.12s ease, background 0.18s ease;
-    width: 100%;
+    width: 100% !important;
 }
-.stButton > button:hover {
-    background: var(--forest);
-    border-color: var(--forest);
+.stButton > button:hover,
+.stDownloadButton > button:hover {
+    background: var(--forest) !important;
+    border-color: var(--forest) !important;
     transform: translateY(-1px);
-    color: #fff;
+    color: #ffffff !important;
 }
-.stButton > button:focus:not(:active) {
-    border-color: var(--sage);
-    box-shadow: 0 0 0 3px rgba(107, 142, 99, 0.2);
-    color: var(--paper);
+.stButton > button:focus:not(:active),
+.stDownloadButton > button:focus:not(:active) {
+    border-color: var(--sage) !important;
+    box-shadow: 0 0 0 3px rgba(107, 142, 99, 0.2) !important;
+    color: var(--paper) !important;
+}
+
+/* Inner button content (label spans) — Streamlit wraps button text */
+.stButton > button p,
+.stButton > button span,
+.stDownloadButton > button p,
+.stDownloadButton > button span {
+    color: var(--paper) !important;
+    font-weight: 500 !important;
 }
 
 /* Secondary "sample" pill buttons */
 .stButton > button[kind="secondary"] {
-    background: var(--surface);
-    color: var(--forest-deep);
-    border: 1px solid var(--hairline);
-    font-weight: 400;
-    font-size: 0.82rem;
-    padding: 0.5rem 1rem;
-    letter-spacing: 0;
+    background: var(--surface) !important;
+    color: var(--forest-deep) !important;
+    border: 1px solid var(--hairline) !important;
+    font-weight: 400 !important;
+    font-size: 0.82rem !important;
+    padding: 0.5rem 1rem !important;
+    letter-spacing: 0 !important;
 }
 .stButton > button[kind="secondary"]:hover {
-    background: var(--moss-bg);
-    border-color: var(--sage);
-    color: var(--forest-deep);
+    background: var(--moss-bg) !important;
+    border-color: var(--sage) !important;
+    color: var(--forest-deep) !important;
+}
+.stButton > button[kind="secondary"] p,
+.stButton > button[kind="secondary"] span {
+    color: var(--forest-deep) !important;
+}
+
+/* ─── File uploader — light card with dashed border ─── */
+[data-testid="stFileUploader"] {
+    background: transparent !important;
+}
+[data-testid="stFileUploader"] section,
+[data-testid="stFileUploaderDropzone"] {
+    background: var(--surface) !important;
+    border: 1.5px dashed var(--sage) !important;
+    border-radius: 12px !important;
+    padding: 1.4rem !important;
+    color: var(--ink-muted) !important;
+}
+[data-testid="stFileUploaderDropzoneInstructions"],
+[data-testid="stFileUploaderDropzoneInstructions"] div,
+[data-testid="stFileUploaderDropzoneInstructions"] span,
+[data-testid="stFileUploaderDropzoneInstructions"] small {
+    color: var(--ink-muted) !important;
+    font-family: 'Inter', sans-serif !important;
+}
+[data-testid="stFileUploaderDropzone"] button {
+    background: var(--paper) !important;
+    color: var(--forest-deep) !important;
+    border: 1px solid var(--hairline) !important;
+    border-radius: 999px !important;
+    font-weight: 500 !important;
+    padding: 0.45rem 1.2rem !important;
+    width: auto !important;
+}
+[data-testid="stFileUploaderDropzone"] button:hover {
+    background: var(--moss-bg) !important;
+    border-color: var(--sage) !important;
+}
+[data-testid="stFileUploaderDropzone"] button p,
+[data-testid="stFileUploaderDropzone"] button span {
+    color: var(--forest-deep) !important;
 }
 
 /* ─── Tabs ─── */
