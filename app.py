@@ -1821,23 +1821,6 @@ def render_classifier_tab(model_package: dict):
             config={"displayModeBar": False},
         )
 
-        prob_df = pd.DataFrame(
-            sorted(result["probabilities"].items(), key=lambda x: -x[1]),
-            columns=["Clade", "Probability"],
-        )
-        st.dataframe(
-            prob_df,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Clade": st.column_config.TextColumn("Clade", width="medium"),
-                "Probability": st.column_config.ProgressColumn(
-                    "Probability", format="%.1f%%",
-                    min_value=0.0, max_value=1.0,
-                ),
-            },
-        )
-
         render_submission_section(measurements, result, model_package)
 
 
