@@ -37,6 +37,7 @@ _PWA_ICON_CANDIDATES = (
     "icon.png",
     "Logo No Background Hoya.png",
 )
+_PWA_ICON_PROCESSED = "pwa_icon.png"  # square + downsized version we generate
 
 
 def _detect_pwa_icon() -> str | None:
@@ -46,7 +47,89 @@ def _detect_pwa_icon() -> str | None:
     return None
 
 
-PWA_ICON_PATH = _detect_pwa_icon()
+def _ensure_square_pwa_icon(source_path: str) -> str:
+    """Auto-crop the source icon to a centered square + resize to 256px,
+    saved as pwa_icon.png. iOS Safari rejects non-square images for the
+    apple-touch-icon and home-screen icon. 256px is large enough for any
+    iOS device (max 180px) while keeping the base64 inline payload small
+    (~40-110 KB). Idempotent — re-runs only when the source file is newer
+    than the processed output.
+
+    Returns the path to use for the favicon (processed if available,
+    source as fallback)."""
+    if not source_path or not os.path.exists(source_path):
+        return source_path
+
+    # Skip work if already processed and up-to-date
+    if (
+        os.path.exists(_PWA_ICON_PROCESSED)
+        and os.path.getmtime(_PWA_ICON_PROCESSED) >= os.path.getmtime(source_path)
+    ):
+        return _PWA_ICON_PROCESSED
+
+    try:
+        from PIL import Image
+        img = Image.open(source_path)
+        # Convert to RGBA for transparency support
+        if img.mode not in ("RGB", "RGBA"):
+            img = img.convert("RGBA")
+
+        w, h = img.size
+        # Crop to centered square (smaller dimension squared)
+        side = min(w, h)
+        left = (w - side) // 2
+        top = (h - side) // 2
+        cropped = img.crop((left, top, left + side, top + side))
+
+        # 256px in working dir for favicon / data-URI use (iOS max is 180,
+        # 256 gives retina headroom while staying small for inline embed)
+        icon_256 = (
+            cropped.resize((256, 256), Image.LANCZOS)
+            if side > 256 else cropped
+        )
+        icon_256.save(_PWA_ICON_PROCESSED, "PNG", optimize=True)
+
+        # Also write 192 and 512 to static/ for the PWA manifest, served
+        # at /app/static/<file> by Streamlit's enableStaticServing. Same
+        # origin as the app — required for Chrome/Edge PWA install to
+        # accept the icons reliably.
+        try:
+            os.makedirs("static", exist_ok=True)
+            icon_192 = cropped.resize((192, 192), Image.LANCZOS)
+            icon_192.save("static/icon-192.png", "PNG", optimize=True)
+            icon_512 = cropped.resize((512, 512), Image.LANCZOS)
+            icon_512.save("static/icon-512.png", "PNG", optimize=True)
+        except Exception:
+            # Static dir not writable on this host — manifest will fall
+            # back to whatever the browser can find (favicon).
+            pass
+
+        return _PWA_ICON_PROCESSED
+    except Exception:
+        # Any error → fall back to the source image
+        return source_path
+
+
+def _get_pwa_icon_data_uri() -> str:
+    """Return the cropped PWA icon as a base64 data URI (or empty string).
+    Data URIs are reachable from any context — including iOS Safari's
+    Add-to-Home-Screen capture — without any cross-origin or caching
+    quirks. Embedding the icon inline is the most reliable way to
+    guarantee iOS picks it up."""
+    if not PWA_ICON_PATH or not os.path.exists(PWA_ICON_PATH):
+        return ""
+    try:
+        with open(PWA_ICON_PATH, "rb") as f:
+            return "data:image/png;base64," + base64.b64encode(f.read()).decode("ascii")
+    except Exception:
+        return ""
+
+
+# Resolve the icon: detect source candidate, then ensure it's square.
+_RAW_PWA_ICON = _detect_pwa_icon()
+PWA_ICON_PATH = (
+    _ensure_square_pwa_icon(_RAW_PWA_ICON) if _RAW_PWA_ICON else None
+)
 # Fall back to the microscope emoji if no icon file is present.
 _PAGE_ICON = PWA_ICON_PATH or "🔬"
 
@@ -90,13 +173,53 @@ st.markdown(
     --bad-bg:       #f7e8e6;
 }
 
-/* ─── Hide Streamlit chrome ─── */
+/* ─── Hide Streamlit chrome (top bar, footer, status, manage-app) ─── */
 #MainMenu, footer, header,
 [data-testid="stToolbar"],
 [data-testid="stDecoration"],
 [data-testid="stStatusWidget"] { visibility: hidden !important; }
 
 [data-testid="stHeader"] { background: transparent; height: 0; }
+
+/* ─── Hide Streamlit Community Cloud's floating chrome ─── */
+/* On Streamlit Cloud the deployed app shows a "Manage app" pill in the
+   bottom-right with the developer's GitHub avatar + the Streamlit boat
+   logo. The selector names have changed across Streamlit versions, so
+   we shotgun several common patterns + use [class*=...] partial matches
+   for forward compatibility. display:none beats visibility:hidden here
+   because it also removes the element from layout (no empty floating
+   space). */
+[data-testid="manage-app-button"],
+[data-testid="stAppDeployButton"],
+[data-testid="stApp-bottom-nav"],
+.viewerBadge_container__1QSob,
+.viewerBadge_link__1S137,
+.viewerBadge_text__1JaDK,
+.viewerBadge_button__qMo6Y,
+.styles_viewerBadge__1yB5_,
+.styles_terminalButton__JBj5Y,
+[class*="viewerBadge"],
+[class*="ViewerBadge"],
+[class*="profileContainer"],
+[class*="ProfileContainer"],
+[class*="profilePicture"],
+[class*="ProfilePicture"],
+[class*="creator-pill"],
+[class*="CreatorPill"],
+[class*="hostingCog"],
+[class*="HostingCog"],
+[class*="StreamlitLogo"],
+[class*="streamlit-logo"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
+}
 
 /* ─── Global ─── */
 html, body, [class*="css"], .stApp {
@@ -1608,6 +1731,69 @@ CLADE_BLURBS = {
 }
 
 
+def render_chrome_hide_script():
+    """Aggressively hide Streamlit Cloud's floating chrome (manage-app
+    pill, developer avatar, Streamlit boat logo) via DOM-level inline
+    style overrides. CSS alone is unreliable here: Streamlit Cloud
+    sometimes re-injects these elements after rerun, and selector names
+    have changed across recent versions. This polling approach catches
+    everything by re-applying every 2 seconds."""
+    components.html(
+        """
+        <script>
+        (function() {
+            const parent = window.parent;
+            if (parent.__hoya_chrome_hide_setup) return;
+            parent.__hoya_chrome_hide_setup = true;
+
+            const selectors = [
+                '[data-testid="manage-app-button"]',
+                '[data-testid="stStatusWidget"]',
+                '[data-testid="stToolbar"]',
+                '[data-testid="stDecoration"]',
+                '[data-testid="stAppDeployButton"]',
+                '[data-testid="stApp-bottom-nav"]',
+                '[class*="viewerBadge"]',
+                '[class*="ViewerBadge"]',
+                '[class*="profileContainer"]',
+                '[class*="ProfileContainer"]',
+                '[class*="profilePicture"]',
+                '[class*="ProfilePicture"]',
+                '[class*="creator-pill"]',
+                '[class*="CreatorPill"]',
+                '[class*="hosting-cog"]',
+                '[class*="HostingCog"]',
+                '[class*="StreamlitLogo"]',
+                '[class*="streamlit-logo"]',
+                '[class*="ribbon"]',
+            ];
+
+            const hideChrome = function() {
+                const doc = parent.document;
+                selectors.forEach(function(sel) {
+                    const els = doc.querySelectorAll(sel);
+                    els.forEach(function(el) {
+                        el.style.setProperty('display', 'none', 'important');
+                        el.style.setProperty('visibility', 'hidden', 'important');
+                        el.style.setProperty('opacity', '0', 'important');
+                        el.style.setProperty('pointer-events', 'none', 'important');
+                        el.style.setProperty('height', '0', 'important');
+                        el.style.setProperty('width', '0', 'important');
+                    });
+                });
+            };
+
+            // Run immediately + on a 2-second interval to catch any
+            // Streamlit re-renders that re-insert chrome elements.
+            hideChrome();
+            setInterval(hideChrome, 2000);
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
+
 def render_pwa_meta_tags():
     """Inject PWA-related <meta> and <link> tags into the parent document
     head so the app is installable as a desktop/mobile PWA via Chrome,
@@ -1620,10 +1806,19 @@ def render_pwa_meta_tags():
 
     The icon URL points at GitHub's raw CDN so it's a stable absolute URL
     regardless of how Streamlit is hosting the file at the moment."""
-    icon_url = (
-        "https://raw.githubusercontent.com/Jbong17/HOYA-FLWR-AI/main/"
-        + (PWA_ICON_PATH.replace(" ", "%20") if PWA_ICON_PATH else "")
-    )
+    # Prefer a base64 data URI of the locally-cropped square icon. Data
+    # URIs are inline, always reachable, and don't depend on whether
+    # Streamlit Cloud serves static files at the same origin or whether
+    # GitHub's raw CDN has the right file. This is the only approach
+    # that consistently works for iOS Add-to-Home-Screen.
+    icon_url = _get_pwa_icon_data_uri()
+    # Last-resort fallback: GitHub raw URL of whatever the user uploaded
+    # (may be portrait — iOS may reject — but desktop browsers will use it).
+    if not icon_url and _RAW_PWA_ICON:
+        icon_url = (
+            "https://raw.githubusercontent.com/Jbong17/HOYA-FLWR-AI/main/"
+            + _RAW_PWA_ICON.replace(" ", "%20")
+        )
 
     components.html(
         f"""
@@ -1676,6 +1871,14 @@ def render_pwa_meta_tags():
                 // Standard <link rel="icon"> for desktop browsers PWA install
                 addLink('icon', iconUrl);
             }}
+
+            // PWA Manifest — read by Chrome / Edge / Android Chrome at the
+            // moment the user clicks "Install". Provides the explicit name,
+            // short_name, icons, and theme — overriding any heuristic
+            // detection that would otherwise pick up Streamlit's defaults.
+            // Path uses /app/static/ which Streamlit's enableStaticServing
+            // exposes when the file is in the repo's static/ folder.
+            addLink('manifest', '/app/static/manifest.json');
         }})();
         </script>
         """,
@@ -2559,6 +2762,7 @@ def render_footer():
 # ──────────────────────────────────────────────────────────────────────────────
 def main():
     init_state()
+    render_chrome_hide_script()
     render_cross_tab_nav_script()
     render_pwa_meta_tags()
     render_hero()
