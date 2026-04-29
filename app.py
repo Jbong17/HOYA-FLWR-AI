@@ -465,17 +465,45 @@ html, body, [class*="css"], .stApp {
 /* ─── Footer ─── */
 .hoya-footer {
     margin: 4rem auto 0 auto;
-    padding-top: 2rem;
+    padding-top: 2.4rem;
     border-top: 1px solid var(--hairline);
     text-align: center;
     font-family: 'Inter', sans-serif;
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     color: var(--ink-subtle);
-    line-height: 1.7;
+    line-height: 1.75;
+}
+.hoya-footer p {
+    margin: 0 0 0.5rem 0;
 }
 .hoya-footer strong {
     color: var(--ink-muted);
     font-weight: 500;
+}
+.hoya-footer-logo {
+    display: block;
+    width: clamp(72px, 8vw, 88px);
+    height: auto;
+    margin: 0 auto 1rem auto;
+    opacity: 0.95;
+}
+.hoya-footer-divider {
+    width: 60px;
+    height: 1px;
+    background: var(--hairline);
+    border: 0;
+    margin: 0.4rem auto 1.4rem auto;
+}
+.hoya-footer-meta {
+    margin-top: 1.4rem !important;
+    font-size: 0.78rem;
+    color: #b8c5a8;
+    letter-spacing: 0.02em;
+}
+.hoya-footer-meta strong {
+    color: var(--sage);
+    font-weight: 600;
+    letter-spacing: 0.05em;
 }
 
 /* ─── Citation block ─── */
@@ -922,6 +950,21 @@ HERO_EMBLEM_SVG = """
 
 
 LOGO_PATH = "Logo No Background Hoya.png"
+NUKLEYO_LOGO_PATH = "Nukleyo Logo.png"
+
+
+@st.cache_data
+def _nukleyo_logo_data_uri() -> str | None:
+    """Read the Nukleyo logo once and cache it as a base64 data URI.
+    Returns None if the file is not in the working directory."""
+    if not os.path.exists(NUKLEYO_LOGO_PATH):
+        return None
+    try:
+        with open(NUKLEYO_LOGO_PATH, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("ascii")
+        return f"data:image/png;base64,{b64}"
+    except Exception:
+        return None
 
 
 def render_hero():
@@ -1520,12 +1563,24 @@ Asian Institute of Management
 
 
 def render_footer():
+    """Footer with Nukleyo ownership mark, attribution, and copyright."""
+    logo_uri = _nukleyo_logo_data_uri()
+    logo_html = (
+        f'<img class="hoya-footer-logo" src="{logo_uri}" '
+        f'alt="Nukleyo Decision Science"/>'
+        f'<hr class="hoya-footer-divider"/>'
+        if logo_uri else ""
+    )
+
     st.markdown(
-        """
+        f"""
         <div class="hoya-footer">
-            <p style="margin: 0 0 0.6rem 0;">Developed by <strong>Jerald B. Bongalos</strong>, Asian Institute of Management</p>
-            <p style="margin: 0 0 0.6rem 0;">Dataset by <strong>Fernando B. Aurigue</strong>, Retired Career Scientist · DOST-PNRI</p>
-            <p style="margin: 1rem 0 0 0; color:#b8c5a8;">© 2026 · MIT License</p>
+            {logo_html}
+            <p>Developed by <strong>Jerald B. Bongalos</strong>, Asian Institute of Management</p>
+            <p>Dataset by <strong>Fernando B. Aurigue</strong>, Retired Career Scientist · DOST-PNRI</p>
+            <p class="hoya-footer-meta">
+                © 2026 · MIT License · An initiative of <strong>NUKLEYO DECISION SCIENCE</strong>
+            </p>
         </div>
         """,
         unsafe_allow_html=True,
