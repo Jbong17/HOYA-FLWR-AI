@@ -1880,6 +1880,22 @@ def render_pwa_meta_tags():
                 head.appendChild(m);
             }};
 
+            // For these PWA-critical link relations, REPLACE any existing
+            // entries (Streamlit ships /-/build/manifest.json with their own
+            // branding, so we have to remove their link before adding ours
+            // or Chrome keeps using Streamlit's manifest).
+            const replaceLink = (rel, href, sizes) => {{
+                head.querySelectorAll('link[rel="' + rel + '"]').forEach(
+                    function(el) {{ el.remove(); }}
+                );
+                const l = parent.document.createElement('link');
+                l.setAttribute('rel', rel);
+                l.setAttribute('href', href);
+                if (sizes) l.setAttribute('sizes', sizes);
+                head.appendChild(l);
+            }};
+
+            // For non-critical adjuncts use add-only behavior (no remove)
             const addLink = (rel, href, sizes) => {{
                 let sel = 'link[rel="' + rel + '"]';
                 if (sizes) sel += '[sizes="' + sizes + '"]';
@@ -1903,27 +1919,48 @@ def render_pwa_meta_tags():
             addMeta('apple-mobile-web-app-title', 'Hoya Classifier');
 
             // CRITICAL for iPhone: apple-touch-icon link tag tells iOS Safari
-            // which image to use for the home-screen icon. Without this, iOS
-            // falls back to a webpage screenshot or Streamlit's default mark.
+            // which image to use for the home-screen icon. Use REPLACE for
+            // these — Streamlit may already have its own icon link tags
+            // from the initial HTML that would otherwise win.
             if (iconUrl && iconUrl.endsWith('main/') === false) {{
-                addLink('apple-touch-icon', iconUrl);
+                replaceLink('apple-touch-icon', iconUrl);
+                replaceLink('icon', iconUrl);
+                // Plus the size-specific variants iOS picks among
                 addLink('apple-touch-icon', iconUrl, '180x180');
                 addLink('apple-touch-icon', iconUrl, '152x152');
                 addLink('apple-touch-icon', iconUrl, '120x120');
-                // Standard <link rel="icon"> for desktop browsers PWA install
-                addLink('icon', iconUrl);
             }}
 
             // PWA Manifest — read by Chrome / Edge / Android Chrome at the
-            // moment the user clicks "Install". Provides the explicit name,
-            // short_name, icons, and theme — overriding any heuristic
-            // detection that would otherwise pick up Streamlit's defaults.
-            // We use an inline data URI so the manifest is reachable
-            // regardless of Streamlit Cloud's static-file routing or
-            // authentication redirects.
+            // moment the user clicks "Install". Streamlit's hosted runtime
+            // ships its OWN manifest at /-/build/manifest.json (verified
+            // via DevTools — name: 'Streamlit'). We MUST remove that link
+            // and replace with ours, or Chrome keeps using Streamlit's
+            // manifest forever.
             const manifestUri = "{manifest_data_uri}";
             if (manifestUri) {{
-                addLink('manifest', manifestUri);
+                replaceLink('manifest', manifestUri);
+
+                // Re-apply every 1.5s to catch any case where Streamlit's
+                // runtime re-inserts its manifest link after our setup
+                // (e.g. on app rerun, websocket reconnect).
+                setInterval(function() {{
+                    const current = head.querySelector('link[rel="manifest"]');
+                    if (!current || current.getAttribute('href') !== manifestUri) {{
+                        replaceLink('manifest', manifestUri);
+                    }}
+                }}, 1500);
+            }}
+
+            // Also unregister any service worker Streamlit may have
+            // registered — service workers can cache the wrong manifest
+            // and override fresh page loads.
+            if (parent.navigator && parent.navigator.serviceWorker) {{
+                parent.navigator.serviceWorker.getRegistrations().then(
+                    function(regs) {{
+                        regs.forEach(function(r) {{ r.unregister(); }});
+                    }}
+                ).catch(function() {{}});
             }}
         }})();
         </script>
