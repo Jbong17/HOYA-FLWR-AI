@@ -27,9 +27,16 @@ SUBMISSIONS_LOG_PATH = "submissions/predictions_log.csv"
 # ──────────────────────────────────────────────────────────────────────────────
 # PAGE CONFIG
 # ──────────────────────────────────────────────────────────────────────────────
+PWA_ICON_PATH = "desktop_icon.png"
+
+# Use the moth-pollinarium photographic icon when it's in the repo, fall
+# back to the microscope emoji so the app never errors if the icon file
+# is missing during a transitional deploy.
+_PAGE_ICON = PWA_ICON_PATH if os.path.exists(PWA_ICON_PATH) else "🔬"
+
 st.set_page_config(
     page_title="Philippine Hoya Clade Classifier",
-    page_icon="🔬",
+    page_icon=_PAGE_ICON,
     layout="centered",
     initial_sidebar_state="collapsed",
 )
@@ -1486,6 +1493,51 @@ CLADE_BLURBS = {
 }
 
 
+def render_pwa_meta_tags():
+    """Inject PWA-related <meta> and <link> tags into the parent document
+    head so the app is installable as a desktop/mobile PWA via Chrome,
+    Edge, and Safari.
+
+    What this enables: when a user opens the app in Chrome, a small
+    'Install' icon appears in the address bar. Clicking it adds a
+    desktop shortcut with the moth icon, and the app launches in its
+    own window without browser chrome — looks and feels like a native
+    desktop application.
+
+    The favicon itself is set via st.set_page_config(page_icon=...);
+    these tags supplement it with PWA-specific metadata."""
+    components.html(
+        """
+        <script>
+        (function() {
+            const parent = window.parent;
+            if (parent.__hoya_pwa_setup) return;
+            parent.__hoya_pwa_setup = true;
+
+            const head = parent.document.head;
+            const addMeta = (name, content) => {
+                if (head.querySelector('meta[name="' + name + '"]')) return;
+                const m = parent.document.createElement('meta');
+                m.setAttribute('name', name);
+                m.setAttribute('content', content);
+                head.appendChild(m);
+            };
+
+            // Browser-chrome theme colour on mobile + standalone PWA window
+            addMeta('theme-color', '#1a3d2e');
+            // Friendly name for installed-app surfaces (dock, taskbar, share sheets)
+            addMeta('application-name', 'Hoya Classifier');
+            // Apple iOS / iPadOS / macOS Safari add-to-home-screen support
+            addMeta('apple-mobile-web-app-capable', 'yes');
+            addMeta('apple-mobile-web-app-status-bar-style', 'default');
+            addMeta('apple-mobile-web-app-title', 'Hoya Classifier');
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
+
 def render_cross_tab_nav_script():
     """Inject JavaScript that turns the .hoya-pill-link anchors in the
     Classifier tab into real cross-tab navigation: clicking a pill activates
@@ -2370,6 +2422,7 @@ def render_footer():
 def main():
     init_state()
     render_cross_tab_nav_script()
+    render_pwa_meta_tags()
     render_hero()
     model_package = load_model()
     render_sidebar(model_package)
