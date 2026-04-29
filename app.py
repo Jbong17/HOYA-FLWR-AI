@@ -128,8 +128,10 @@ html, body, [class*="css"], .stApp {
     margin: 0 auto 1.1rem auto;
 }
 .hoya-title {
+    /* Sized so "Philippine Hoya Clade Classifier" stays on ONE LINE across
+       every reasonable viewport (~360px phone → ~1400px desktop). */
     font-family: 'Cormorant Garamond', 'EB Garamond', Garamond, Georgia, serif;
-    font-size: clamp(1.55rem, 4.6vw, 2.9rem);
+    font-size: clamp(1.25rem, 4vw, 2.6rem);
     font-weight: 600;
     line-height: 1.08;
     letter-spacing: -0.015em;
@@ -137,6 +139,7 @@ html, body, [class*="css"], .stApp {
     text-align: center;
     margin: 0.4rem auto 0.6rem auto;
     white-space: nowrap;
+    overflow: visible;
 }
 .hoya-title em {
     font-style: italic;
@@ -146,7 +149,7 @@ html, body, [class*="css"], .stApp {
     /* Same Garamond family + size as title, differentiated by italic +
        sage color for editorial hierarchy without breaking visual unity. */
     font-family: 'Cormorant Garamond', 'EB Garamond', Garamond, Georgia, serif;
-    font-size: clamp(1.55rem, 4.6vw, 2.9rem);
+    font-size: clamp(1.25rem, 4vw, 2.6rem);
     font-weight: 400;
     font-style: italic;
     line-height: 1.12;
@@ -155,6 +158,7 @@ html, body, [class*="css"], .stApp {
     text-align: center;
     margin: 0 auto 1.4rem auto;
     white-space: nowrap;
+    overflow: visible;
 }
 .hoya-tagline {
     font-family: 'Inter', sans-serif;
@@ -1578,28 +1582,29 @@ Asian Institute of Management
 
 
 def render_footer():
-    """Footer with Nukleyo ownership mark, attribution, and copyright."""
+    """Footer with Nukleyo ownership mark, attribution, and copyright.
+
+    NOTE: the HTML is built as a single flush-left string to avoid
+    Streamlit's markdown parser interpreting indented lines as code blocks
+    (any 4+ space indent triggers <pre><code> wrapping even with
+    unsafe_allow_html=True, which would render the HTML as literal text)."""
     logo_uri = _nukleyo_logo_data_uri()
     logo_html = (
-        f'<img class="hoya-footer-logo" src="{logo_uri}" '
-        f'alt="Nukleyo Decision Science"/>'
-        f'<hr class="hoya-footer-divider"/>'
+        f'<img class="hoya-footer-logo" src="{logo_uri}" alt="Nukleyo Decision Science"/>'
+        '<hr class="hoya-footer-divider"/>'
         if logo_uri else ""
     )
 
-    st.markdown(
-        f"""
-        <div class="hoya-footer">
-            {logo_html}
-            <p>Developed by <strong>Jerald B. Bongalos</strong>, Asian Institute of Management</p>
-            <p>Dataset by <strong>Fernando B. Aurigue</strong>, Retired Career Scientist · DOST-PNRI</p>
-            <p class="hoya-footer-meta">
-                © 2026 · MIT License · An initiative of <strong>NUKLEYO DECISION SCIENCE</strong>
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    html = (
+        '<div class="hoya-footer">'
+        f'{logo_html}'
+        '<p>Developed by <strong>Jerald B. Bongalos</strong>, Asian Institute of Management</p>'
+        '<p>Dataset by <strong>Fernando B. Aurigue</strong>, Retired Career Scientist · DOST-PNRI</p>'
+        '<p class="hoya-footer-meta">© 2026 · MIT License · '
+        'An initiative of <strong>NUKLEYO DECISION SCIENCE</strong></p>'
+        '</div>'
     )
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
