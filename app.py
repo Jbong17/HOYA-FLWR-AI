@@ -9,8 +9,10 @@ Dataset Owner:    Fernando B. Aurigue (Retired Career Scientist, DOST-PNRI)
 import base64
 import datetime as _dt
 import io
+import json
 import os
 import pickle
+import urllib.parse
 
 import numpy as np
 import pandas as pd
@@ -1820,6 +1822,46 @@ def render_pwa_meta_tags():
             + _RAW_PWA_ICON.replace(" ", "%20")
         )
 
+    # Build the manifest JSON dynamically with the icon embedded inline as
+    # a base64 data URI. Then encode the whole manifest as a data URI for
+    # the <link rel="manifest"> tag. Two reasons this is more reliable than
+    # serving manifest.json from the repo's static/ folder:
+    #   1. Streamlit Cloud's static-file serving requires authentication
+    #      redirects that some PWA-install flows don't follow correctly.
+    #   2. Inline data URIs always work — no CORS, no 404s, no auth.
+    manifest_data_uri = ""
+    if icon_url:
+        manifest_obj = {
+            "name": "Philippine Hoya Clade Classifier",
+            "short_name": "Hoya Classifier",
+            "description": (
+                "AI-powered pollinarium morphometric analysis for "
+                "Philippine Hoya clade-level identification."
+            ),
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "background_color": "#faf8f3",
+            "theme_color": "#1a3d2e",
+            "categories": ["education", "science"],
+            "icons": [
+                {
+                    "src": icon_url,
+                    "sizes": "256x256",
+                    "type": "image/png",
+                    "purpose": "any maskable",
+                },
+            ],
+        }
+        # urllib.parse.quote keeps the data URI valid (escapes JSON
+        # specials like quotes, braces, slashes that would otherwise
+        # break the manifest URL). safe="" disables the default
+        # safe-character set, which is what we want for full encoding.
+        manifest_data_uri = (
+            "data:application/manifest+json;charset=utf-8,"
+            + urllib.parse.quote(json.dumps(manifest_obj), safe="")
+        )
+
     components.html(
         f"""
         <script>
@@ -1876,9 +1918,13 @@ def render_pwa_meta_tags():
             // moment the user clicks "Install". Provides the explicit name,
             // short_name, icons, and theme — overriding any heuristic
             // detection that would otherwise pick up Streamlit's defaults.
-            // Path uses /app/static/ which Streamlit's enableStaticServing
-            // exposes when the file is in the repo's static/ folder.
-            addLink('manifest', '/app/static/manifest.json');
+            // We use an inline data URI so the manifest is reachable
+            // regardless of Streamlit Cloud's static-file routing or
+            // authentication redirects.
+            const manifestUri = "{manifest_data_uri}";
+            if (manifestUri) {{
+                addLink('manifest', manifestUri);
+            }}
         }})();
         </script>
         """,
