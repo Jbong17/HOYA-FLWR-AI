@@ -117,6 +117,7 @@ html, body, [class*="css"], .stApp {
     display: block;
 }
 .hoya-eyebrow {
+    /* legacy class — kept for any non-hero usage; not in current hero */
     font-family: 'Inter', sans-serif;
     font-size: 0.78rem;
     font-weight: 500;
@@ -128,18 +129,32 @@ html, body, [class*="css"], .stApp {
 }
 .hoya-title {
     font-family: 'Cormorant Garamond', 'EB Garamond', Garamond, Georgia, serif;
-    font-size: clamp(2.4rem, 6vw, 4rem);
+    font-size: clamp(1.55rem, 4.6vw, 2.9rem);
     font-weight: 600;
-    line-height: 1.06;
+    line-height: 1.08;
     letter-spacing: -0.015em;
     color: var(--forest-deep);
     text-align: center;
-    margin: 0 auto 1rem auto;
-    max-width: 20ch;
+    margin: 0.4rem auto 0.6rem auto;
+    white-space: nowrap;
 }
 .hoya-title em {
     font-style: italic;
     font-weight: 500;
+}
+.hoya-subtitle {
+    /* Same Garamond family + size as title, differentiated by italic +
+       sage color for editorial hierarchy without breaking visual unity. */
+    font-family: 'Cormorant Garamond', 'EB Garamond', Garamond, Georgia, serif;
+    font-size: clamp(1.55rem, 4.6vw, 2.9rem);
+    font-weight: 400;
+    font-style: italic;
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    color: var(--sage);
+    text-align: center;
+    margin: 0 auto 1.4rem auto;
+    white-space: nowrap;
 }
 .hoya-tagline {
     font-family: 'Inter', sans-serif;
@@ -950,7 +965,7 @@ HERO_EMBLEM_SVG = """
 
 
 LOGO_PATH = "Logo No Background Hoya.png"
-NUKLEYO_LOGO_PATH = "Nukleyo Logo.png"
+NUKLEYO_LOGO_PATH = "Nukleyo DS Logo.png"
 
 
 @st.cache_data
@@ -987,8 +1002,8 @@ def render_hero():
 
     st.markdown(
         '<div class="hoya-hero">'
-        '<p class="hoya-eyebrow">Pollinarium Morphometric Analysis</p>'
         '<h1 class="hoya-title">Philippine <em>Hoya</em> Clade Classifier</h1>'
+        '<p class="hoya-subtitle">Pollinarium Morphometric Analysis</p>'
         '<p class="hoya-tagline">An ensemble machine-learning system for rapid '
         'clade-level identification of Philippine <em>Hoya</em> from microscopic '
         'pollinarium measurements.</p>'
