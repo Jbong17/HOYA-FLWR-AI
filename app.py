@@ -1266,6 +1266,60 @@ def render_sidebar(model_package: dict):
         )
 
 
+CLADE_BLURBS = {
+    "Acanthostemma": {
+        "subtitle": "Broad-leafed clade with fleshy, recurved corona",
+        "n": "24 specimens (37.5%)",
+        "body": (
+            "Acanthostemma species typically have **fleshy, often recurved coronal "
+            "lobes** giving the corona an upright profile (whence the name "
+            "*acantho-* 'thorn'). Pollinaria tend toward shorter, broader "
+            "pollinia with a relatively robust corpusculum. The translator "
+            "arms are short and the caudicle extension is moderate.\n\n"
+            "**Examples:** *H. carnosa*-aligned forms, *H. cumingiana*."
+        ),
+    },
+    "Hoya": {
+        "subtitle": "The type clade — defines the genus",
+        "n": "35 specimens (54.7%)",
+        "body": (
+            "The **type clade** of the genus, with the most diverse species "
+            "count in Philippine collections. Pollinia tend to be more "
+            "elongate than those of *Acanthostemma*, with a wide morphometric "
+            "range across the corpusculum. This is the classifier's strongest "
+            "performance class (~80% recall under LOOCV).\n\n"
+            "**Examples:** *H. cagayanensis*, *H. paziae*, *H. siariae*."
+        ),
+    },
+    "Pterostelma": {
+        "subtitle": "'Winged corona' group with large pollinaria",
+        "n": "4 specimens (6.3%)",
+        "body": (
+            "From Greek *πτερόν* 'wing' + *στέμμα* 'crown' — the corona has "
+            "thin, wing-like flanges projecting laterally. **Pollinaria are "
+            "characteristically larger** than the other clades, with elongate "
+            "pollinia and a long translator stalk and caudicle extension. "
+            "The classifier's *translator_leverage* and *extension_index* "
+            "engineered features carry strong weight here.\n\n"
+            "**Examples:** *H. mindorensis*, *H. siamica*."
+        ),
+    },
+    "Centrostemma": {
+        "subtitle": "Rare — only one specimen in this dataset",
+        "n": "1 specimen (1.6%)",
+        "body": (
+            "From Greek *κέντρον* 'centre' + *στέμμα* 'crown' — strongly "
+            "developed central coronal axis with reduced lateral lobes, "
+            "producing an upright, almost columnar corona. **Severely "
+            "underrepresented** in the corpus; predictions for this clade "
+            "should be treated as exploratory and require taxonomist "
+            "verification.\n\n"
+            "**Examples:** *H. multiflora* (under some treatments), *H. lyi*."
+        ),
+    },
+}
+
+
 def render_sample_pills():
     """Quick-fill buttons for representative clade measurements."""
     st.markdown('<p class="sample-label">Quick-fill with reference measurements</p>', unsafe_allow_html=True)
@@ -1275,6 +1329,23 @@ def render_sample_pills():
             for k, v in preset.items():
                 st.session_state[k] = v
             st.rerun()
+
+
+def render_clade_info_inline():
+    """Expandable info rows for the four clades, shown in the Classifier tab.
+    Provides 'click to learn more' UX without requiring tab navigation."""
+    st.markdown(
+        '<p class="sample-label" style="margin-top:1.4rem;">'
+        "Tap any clade to learn more"
+        "</p>",
+        unsafe_allow_html=True,
+    )
+    for clade, info in CLADE_BLURBS.items():
+        with st.expander(f"**{clade}** — {info['subtitle']}  ·  {info['n']}"):
+            st.markdown(info["body"])
+            st.markdown(
+                "_For the full description, see the **Guide** tab._"
+            )
 
 
 def init_state():
@@ -1288,6 +1359,7 @@ def init_state():
 def render_input_form():
     init_state()
     render_sample_pills()
+    render_clade_info_inline()
 
     # ── Pollinia ──────────────────────────────────────────────────────────
     with st.container(border=True):
@@ -1825,6 +1897,21 @@ def render_history_tab():
 def render_guide_tab():
     st.markdown(
         """
+### The four Hoya clades
+
+The classifier resolves *Hoya* to one of four major clades. Click any name
+in the list below to jump to its detailed entry further down this page:
+
+- **[Acanthostemma](#acanthostemma)** — broad-leafed, fleshy-coronaed; the
+  best-represented clade in this dataset.
+- **[The Hoya clade](#the-hoya-clade)** *(sensu stricto)* — the type clade
+  that defines the nominate group of the genus.
+- **[Pterostelma](#pterostelma)** — "winged-corona" group; characteristically
+  large pollinaria.
+- **[Centrostemma](#centrostemma)** — rare; only one specimen in this dataset.
+
+---
+
 ### Pollinarium anatomy
 
 The *Hoya* **pollinarium** is the entire pollen-dispersal unit of a single
@@ -1911,18 +1998,7 @@ soft-voting ensemble.
 
 ---
 
-### The four Hoya clades
-
-The classifier resolves *Hoya* to one of four major clades. Click each below
-to read its diagnostic features and dataset representation:
-
-- **[Acanthostemma](#acanthostemma)** — broad-leafed, fleshy-coronaed; the
-  best-represented clade in this dataset.
-- **[Hoya](#hoya-clade)** *(sensu stricto)* — the type clade; defines the
-  nominate group of the genus.
-- **[Pterostelma](#pterostelma)** — "winged-corona" group; characteristically
-  large pollinaria.
-- **[Centrostemma](#centrostemma)** — rare; only one specimen in this dataset.
+### Clade descriptions
 
 #### Acanthostemma
 
@@ -1948,7 +2024,7 @@ classification.
 
 ---
 
-#### Hoya {#hoya-clade}
+#### The Hoya clade
 
 ***Hoya* sect. *Hoya*** is the **type clade** — it contains the type
 species and defines the nominate group from which the genus is named. In
