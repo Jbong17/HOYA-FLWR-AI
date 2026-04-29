@@ -665,6 +665,52 @@ html, body, [class*="css"], .stApp {
     color: var(--ink-subtle);
     margin: 0.4rem 0 0.6rem 0;
 }
+
+/* ─── Clade hyperlink pills ─── */
+/* Real <a href> anchors styled to look like the previous st.button pills.
+   Each link scrolls to an "About <clade>" section anchored at the bottom
+   of the Classifier tab. */
+.hoya-pills-row {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: stretch;
+    margin: 0.4rem 0 1.6rem 0;
+    flex-wrap: wrap;
+}
+.hoya-pill-link {
+    flex: 1 1 0;
+    min-width: 140px;
+    text-align: center;
+    padding: 0.7rem 1.2rem;
+    background: var(--surface) !important;
+    color: var(--forest-deep) !important;
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.96rem;
+    font-weight: 500;
+    text-decoration: none !important;
+    transition: background 0.15s ease, border-color 0.15s ease,
+                transform 0.12s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+}
+.hoya-pill-link:hover {
+    background: var(--moss-bg) !important;
+    border-color: var(--sage);
+    color: var(--forest-deep) !important;
+    text-decoration: none !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(20, 30, 25, 0.06);
+}
+.hoya-pill-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(107, 142, 99, 0.25);
+    border-color: var(--sage);
+}
+.hoya-pill-link:active {
+    transform: translateY(0);
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -1320,32 +1366,54 @@ CLADE_BLURBS = {
 }
 
 
-def render_sample_pills():
-    """Quick-fill buttons for representative clade measurements."""
-    st.markdown('<p class="sample-label">Quick-fill with reference measurements</p>', unsafe_allow_html=True)
-    cols = st.columns(len(SAMPLE_PRESETS))
-    for col, (clade, preset) in zip(cols, SAMPLE_PRESETS.items()):
-        if col.button(clade, key=f"preset_{clade}", use_container_width=True):
-            for k, v in preset.items():
-                st.session_state[k] = v
-            st.rerun()
+def render_clade_pill_links():
+    """Four real <a href> hyperlinks styled as pills. Each link scrolls
+    the page to its corresponding 'About <clade>' anchor section rendered
+    by render_clade_info_anchored() at the bottom of the Classifier tab.
 
-
-def render_clade_info_inline():
-    """Expandable info rows for the four clades, shown in the Classifier tab.
-    Provides 'click to learn more' UX without requiring tab navigation."""
+    Note on anchor matching: Streamlit auto-generates anchor IDs from
+    markdown header text using a slug rule (lowercase, spaces → dashes).
+    Each href below must match the slug of the corresponding ### header
+    rendered later in the same tab.
+    """
     st.markdown(
-        '<p class="sample-label" style="margin-top:1.4rem;">'
-        "Tap any clade to learn more"
-        "</p>",
+        '<p class="sample-label">About the four clades — tap a name to learn more</p>'
+        '<div class="hoya-pills-row">'
+        '<a class="hoya-pill-link" href="#about-acanthostemma">Acanthostemma</a>'
+        '<a class="hoya-pill-link" href="#about-the-hoya-clade">Hoya</a>'
+        '<a class="hoya-pill-link" href="#about-pterostelma">Pterostelma</a>'
+        '<a class="hoya-pill-link" href="#about-centrostemma">Centrostemma</a>'
+        '</div>',
         unsafe_allow_html=True,
     )
+
+
+def render_clade_info_anchored():
+    """Detailed clade info section rendered at the bottom of the Classifier
+    tab. Each ### header gets a Streamlit-auto-generated anchor ID that
+    matches the href in render_clade_pill_links()."""
+    st.markdown(
+        '<p class="hoya-section" style="margin-top:3rem;">About the four clades</p>'
+        '<p class="hoya-section-sub">Click a clade pill at the top of this tab '
+        "to scroll directly to its description. For deeper morphological "
+        "detail, see the <strong>Guide</strong> tab.</p>",
+        unsafe_allow_html=True,
+    )
+
+    headings = {
+        "Acanthostemma": "About Acanthostemma",
+        "Hoya":          "About the Hoya clade",
+        "Pterostelma":   "About Pterostelma",
+        "Centrostemma":  "About Centrostemma",
+    }
+
     for clade, info in CLADE_BLURBS.items():
-        with st.expander(f"**{clade}** — {info['subtitle']}  ·  {info['n']}"):
-            st.markdown(info["body"])
-            st.markdown(
-                "_For the full description, see the **Guide** tab._"
-            )
+        st.markdown(
+            f"### {headings[clade]}\n\n"
+            f"*{info['subtitle']}* · **{info['n']}**\n\n"
+            f"{info['body']}\n\n"
+            "---"
+        )
 
 
 def init_state():
@@ -1358,8 +1426,7 @@ def init_state():
 
 def render_input_form():
     init_state()
-    render_sample_pills()
-    render_clade_info_inline()
+    render_clade_pill_links()
 
     # ── Pollinia ──────────────────────────────────────────────────────────
     with st.container(border=True):
@@ -1528,6 +1595,10 @@ def render_classifier_tab(model_package: dict):
         )
 
         render_submission_section(measurements, result, model_package)
+
+    # Anchored clade info section — destination of the pill hyperlinks at
+    # the top of this tab. Always rendered (regardless of classification).
+    render_clade_info_anchored()
 
 
 def render_submission_section(measurements: dict, result: dict, model_package: dict):
