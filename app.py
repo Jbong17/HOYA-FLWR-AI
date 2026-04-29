@@ -361,6 +361,128 @@ html, body, [class*="css"], .stApp {
     color: var(--forest-deep) !important;
 }
 
+/* ─── Force light theme on native Streamlit widgets ─── */
+/* Streamlit's native widgets (dataframe, expander, selectbox, textarea)
+   respect prefers-color-scheme and go dark on users in dark mode. The
+   .streamlit/config.toml file should pin theme=light, but these CSS
+   overrides are belt-and-suspenders for any widget that escapes. */
+
+/* DataFrame / table */
+[data-testid="stDataFrame"],
+[data-testid="stDataFrame"] > div,
+[data-testid="stDataFrame"] [class*="dvn-"],
+[data-testid="stDataFrameResizable"],
+.stDataFrame {
+    background: var(--surface) !important;
+    color: var(--ink) !important;
+    border: 1px solid var(--hairline) !important;
+    border-radius: 10px !important;
+}
+[data-testid="stDataFrame"] [role="grid"],
+[data-testid="stDataFrame"] [role="row"],
+[data-testid="stDataFrame"] [role="columnheader"],
+[data-testid="stDataFrame"] [role="gridcell"] {
+    background: var(--surface) !important;
+    color: var(--ink) !important;
+}
+/* Progress-column bar (replaces the default red on dark) */
+[data-testid="stDataFrame"] [class*="progress"] {
+    background: var(--moss-bg) !important;
+}
+[data-testid="stDataFrame"] [class*="progress"] > div {
+    background: var(--forest-deep) !important;
+}
+
+/* Expander — header bar and body */
+[data-testid="stExpander"] {
+    background: var(--surface) !important;
+    border: 1px solid var(--hairline) !important;
+    border-radius: 12px !important;
+    margin: 0.6rem 0 !important;
+}
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] details > summary {
+    background: var(--moss-bg) !important;
+    color: var(--forest-deep) !important;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 0.85rem 1.2rem !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 500 !important;
+}
+[data-testid="stExpander"] details > summary:hover {
+    background: #e9eee2 !important;
+}
+[data-testid="stExpander"] details[open] > summary {
+    border-bottom: 1px solid var(--hairline) !important;
+}
+[data-testid="stExpander"] details > div:last-child,
+[data-testid="stExpanderDetails"] {
+    background: var(--surface) !important;
+    color: var(--ink) !important;
+    padding: 1.2rem !important;
+}
+[data-testid="stExpander"] p,
+[data-testid="stExpander"] li,
+[data-testid="stExpander"] span {
+    color: var(--ink) !important;
+}
+
+/* Selectbox */
+[data-baseweb="select"] {
+    background: var(--paper) !important;
+}
+[data-baseweb="select"] > div {
+    background: var(--paper) !important;
+    color: var(--ink) !important;
+    border: 1px solid var(--hairline) !important;
+    border-radius: 8px !important;
+}
+[data-baseweb="select"] input,
+[data-baseweb="select"] [role="combobox"] {
+    color: var(--ink) !important;
+    background: transparent !important;
+}
+/* Selectbox dropdown menu */
+[data-baseweb="popover"] [role="listbox"],
+[data-baseweb="menu"] {
+    background: var(--surface) !important;
+    border: 1px solid var(--hairline) !important;
+    color: var(--ink) !important;
+}
+[data-baseweb="menu"] li,
+[data-baseweb="menu"] [role="option"] {
+    background: var(--surface) !important;
+    color: var(--ink) !important;
+}
+[data-baseweb="menu"] li:hover,
+[data-baseweb="menu"] [role="option"]:hover {
+    background: var(--moss-bg) !important;
+}
+
+/* Textarea */
+[data-testid="stTextArea"] textarea,
+.stTextArea textarea,
+textarea {
+    background: var(--paper) !important;
+    color: var(--ink) !important;
+    border: 1px solid var(--hairline) !important;
+    border-radius: 8px !important;
+    font-family: 'Inter', sans-serif !important;
+}
+[data-testid="stTextArea"] label {
+    color: var(--ink) !important;
+    background: transparent !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* Text input */
+[data-testid="stTextInput"] input,
+.stTextInput input {
+    background: var(--paper) !important;
+    color: var(--ink) !important;
+    border: 1px solid var(--hairline) !important;
+}
+
 /* ─── File uploader — light card with dashed border ─── */
 [data-testid="stFileUploader"] {
     background: transparent !important;
