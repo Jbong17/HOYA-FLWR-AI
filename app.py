@@ -27,12 +27,28 @@ SUBMISSIONS_LOG_PATH = "submissions/predictions_log.csv"
 # ──────────────────────────────────────────────────────────────────────────────
 # PAGE CONFIG
 # ──────────────────────────────────────────────────────────────────────────────
-PWA_ICON_PATH = "desktop_icon.png"
+# Look for the moth-pollinarium icon under a few common upload names.
+# GitHub's "Upload files" flow keeps whatever name the file had on the
+# user's computer, so we try the most likely candidates in order rather
+# than forcing them to rename.
+_PWA_ICON_CANDIDATES = (
+    "desktop_icon.png",
+    "image.png",
+    "icon.png",
+    "Logo No Background Hoya.png",
+)
 
-# Use the moth-pollinarium photographic icon when it's in the repo, fall
-# back to the microscope emoji so the app never errors if the icon file
-# is missing during a transitional deploy.
-_PAGE_ICON = PWA_ICON_PATH if os.path.exists(PWA_ICON_PATH) else "🔬"
+
+def _detect_pwa_icon() -> str | None:
+    for path in _PWA_ICON_CANDIDATES:
+        if os.path.exists(path):
+            return path
+    return None
+
+
+PWA_ICON_PATH = _detect_pwa_icon()
+# Fall back to the microscope emoji if no icon file is present.
+_PAGE_ICON = PWA_ICON_PATH or "🔬"
 
 st.set_page_config(
     page_title="Philippine Hoya Clade Classifier",
@@ -782,6 +798,105 @@ textarea {
     white-space: pre-wrap;
 }
 
+/* ─── Mobile responsive (≤ 640 px wide — phones in portrait) ─── */
+/* The bulk of the design uses clamp() and is already viewport-fluid, but
+   three specific things need overrides on phones:
+     1. The hero title/subtitle have `white-space: nowrap` so they stay
+        on one line on desktop; on a narrow phone that overflows the
+        viewport horizontally — let them wrap instead.
+     2. Streamlit's st.columns() renders as [data-testid="stHorizontalBlock"]
+        and stays horizontal at every viewport. On phones the 2- and 3-column
+        input layouts squeeze each input to ~100 px wide. Stack them.
+     3. Tabs and footer-logo column need slight tightening for narrow widths. */
+@media (max-width: 640px) {
+    /* Title and subtitle: allow wrapping; remove nowrap-induced overflow */
+    .hoya-title,
+    .hoya-subtitle {
+        white-space: normal !important;
+        max-width: 100% !important;
+        padding: 0 0.4rem;
+    }
+
+    /* Block container: slightly tighter side padding on phones */
+    .block-container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        padding-top: 1.5rem !important;
+    }
+
+    /* Stack ALL st.columns vertically on phones */
+    [data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+    }
+    [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+        width: 100% !important;
+        min-width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+
+    /* Footer: center the attribution text once it stacks below the logo */
+    .hoya-footer-attribution,
+    .hoya-footer-attribution p {
+        text-align: center !important;
+    }
+    .hoya-footer-logo-wrap [data-testid="stImage"] img {
+        margin: 0 auto 1rem auto !important;
+    }
+
+    /* Tabs: tighter gap so 5 tabs fit without wrapping past the right edge */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 1rem !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        font-size: 0.88rem !important;
+        padding: 0.5rem 0 !important;
+    }
+
+    /* Cards: slightly tighter padding inside */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        padding: 1.1rem 1rem !important;
+    }
+
+    /* Section headings: shrink a touch so they don't dominate the screen */
+    .hoya-section {
+        font-size: 1.4rem !important;
+    }
+    .hoya-section-sub {
+        font-size: 0.92rem !important;
+    }
+
+    /* Result clade name in the result card */
+    .result-clade {
+        font-size: clamp(2rem, 9vw, 2.5rem) !important;
+    }
+
+    /* Pill hyperlinks: 2 per row instead of 4 */
+    .hoya-pill-link {
+        flex-basis: calc(50% - 0.5rem) !important;
+        min-width: calc(50% - 0.5rem) !important;
+        font-size: 0.92rem !important;
+        padding: 0.6rem 0.8rem !important;
+    }
+    .hoya-pills-row {
+        gap: 0.6rem !important;
+    }
+}
+
+/* Even tighter — very narrow (iPhone SE 1st-gen, etc., ≤ 380 px) */
+@media (max-width: 380px) {
+    .hoya-title {
+        font-size: 1.6rem !important;
+        line-height: 1.15 !important;
+    }
+    .hoya-subtitle {
+        font-size: 1.3rem !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        font-size: 0.82rem !important;
+    }
+}
+
 /* ─── Sample-data row ─── */
 .sample-label {
     font-family: 'Inter', sans-serif;
@@ -1496,32 +1611,50 @@ CLADE_BLURBS = {
 def render_pwa_meta_tags():
     """Inject PWA-related <meta> and <link> tags into the parent document
     head so the app is installable as a desktop/mobile PWA via Chrome,
-    Edge, and Safari.
+    Edge, and Safari with a custom icon.
 
-    What this enables: when a user opens the app in Chrome, a small
-    'Install' icon appears in the address bar. Clicking it adds a
-    desktop shortcut with the moth icon, and the app launches in its
-    own window without browser chrome — looks and feels like a native
-    desktop application.
+    Critical detail for iPhone: iOS Safari reads <link rel="apple-touch-icon">
+    when 'Add to Home Screen' is tapped. Without that specific link, iOS
+    falls back to a screenshot of the page (or Streamlit's default brand
+    mark). The favicon set via st.set_page_config doesn't substitute.
 
-    The favicon itself is set via st.set_page_config(page_icon=...);
-    these tags supplement it with PWA-specific metadata."""
+    The icon URL points at GitHub's raw CDN so it's a stable absolute URL
+    regardless of how Streamlit is hosting the file at the moment."""
+    icon_url = (
+        "https://raw.githubusercontent.com/Jbong17/HOYA-FLWR-AI/main/"
+        + (PWA_ICON_PATH.replace(" ", "%20") if PWA_ICON_PATH else "")
+    )
+
     components.html(
-        """
+        f"""
         <script>
-        (function() {
+        (function() {{
             const parent = window.parent;
             if (parent.__hoya_pwa_setup) return;
             parent.__hoya_pwa_setup = true;
 
             const head = parent.document.head;
-            const addMeta = (name, content) => {
+
+            const addMeta = (name, content) => {{
                 if (head.querySelector('meta[name="' + name + '"]')) return;
                 const m = parent.document.createElement('meta');
                 m.setAttribute('name', name);
                 m.setAttribute('content', content);
                 head.appendChild(m);
-            };
+            }};
+
+            const addLink = (rel, href, sizes) => {{
+                let sel = 'link[rel="' + rel + '"]';
+                if (sizes) sel += '[sizes="' + sizes + '"]';
+                if (head.querySelector(sel)) return;
+                const l = parent.document.createElement('link');
+                l.setAttribute('rel', rel);
+                l.setAttribute('href', href);
+                if (sizes) l.setAttribute('sizes', sizes);
+                head.appendChild(l);
+            }};
+
+            const iconUrl = "{icon_url}";
 
             // Browser-chrome theme colour on mobile + standalone PWA window
             addMeta('theme-color', '#1a3d2e');
@@ -1531,7 +1664,19 @@ def render_pwa_meta_tags():
             addMeta('apple-mobile-web-app-capable', 'yes');
             addMeta('apple-mobile-web-app-status-bar-style', 'default');
             addMeta('apple-mobile-web-app-title', 'Hoya Classifier');
-        })();
+
+            // CRITICAL for iPhone: apple-touch-icon link tag tells iOS Safari
+            // which image to use for the home-screen icon. Without this, iOS
+            // falls back to a webpage screenshot or Streamlit's default mark.
+            if (iconUrl && iconUrl.endsWith('main/') === false) {{
+                addLink('apple-touch-icon', iconUrl);
+                addLink('apple-touch-icon', iconUrl, '180x180');
+                addLink('apple-touch-icon', iconUrl, '152x152');
+                addLink('apple-touch-icon', iconUrl, '120x120');
+                // Standard <link rel="icon"> for desktop browsers PWA install
+                addLink('icon', iconUrl);
+            }}
+        }})();
         </script>
         """,
         height=0,
