@@ -146,13 +146,13 @@ html, body, [class*="css"], .stApp {
     font-weight: 500;
 }
 .hoya-subtitle {
-    /* Same Garamond family + size as title, differentiated by italic +
-       sage color for editorial hierarchy without breaking visual unity. */
+    /* Garamond italic in sage. Bumped ~5pt larger than the title size for
+       legibility — the italic sage style makes it visually recede otherwise. */
     font-family: 'Cormorant Garamond', 'EB Garamond', Garamond, Georgia, serif;
-    font-size: clamp(1.25rem, 4vw, 2.6rem);
-    font-weight: 400;
+    font-size: clamp(1.55rem, 4.6vw, 3rem);
+    font-weight: 500;
     font-style: italic;
-    line-height: 1.12;
+    line-height: 1.15;
     letter-spacing: -0.01em;
     color: var(--sage);
     text-align: center;
@@ -489,46 +489,42 @@ html, body, [class*="css"], .stApp {
 }
 
 /* ─── Footer ─── */
-.hoya-footer {
-    margin: 4rem auto 0 auto;
-    padding-top: 2.4rem;
-    border-top: 1px solid var(--hairline);
+.hoya-footer-logo-wrap {
+    text-align: center;
+    margin: 0 auto 1.4rem auto;
+}
+.hoya-footer-logo-wrap [data-testid="stImage"] img {
+    max-width: clamp(80px, 9vw, 110px);
+    width: 100% !important;
+    height: auto;
+    margin: 0 auto;
+    display: block;
+}
+.hoya-footer-text {
     text-align: center;
     font-family: 'Inter', sans-serif;
-    font-size: 0.88rem;
+    font-size: 0.92rem;
     color: var(--ink-subtle);
     line-height: 1.75;
+    padding-bottom: 2rem;
 }
-.hoya-footer p {
-    margin: 0 0 0.5rem 0;
+.hoya-footer-text p {
+    margin: 0 0 0.5rem 0 !important;
+    text-align: center !important;
 }
-.hoya-footer strong {
+.hoya-footer-text strong {
     color: var(--ink-muted);
     font-weight: 500;
 }
-.hoya-footer-logo {
-    display: block;
-    width: clamp(72px, 8vw, 88px);
-    height: auto;
-    margin: 0 auto 1rem auto;
-    opacity: 0.95;
-}
-.hoya-footer-divider {
-    width: 60px;
-    height: 1px;
-    background: var(--hairline);
-    border: 0;
-    margin: 0.4rem auto 1.4rem auto;
-}
 .hoya-footer-meta {
     margin-top: 1.4rem !important;
-    font-size: 0.78rem;
-    color: #b8c5a8;
+    font-size: 0.82rem !important;
+    color: #b8c5a8 !important;
     letter-spacing: 0.02em;
 }
 .hoya-footer-meta strong {
-    color: var(--sage);
-    font-weight: 600;
+    color: var(--sage) !important;
+    font-weight: 600 !important;
     letter-spacing: 0.05em;
 }
 
@@ -979,20 +975,6 @@ LOGO_PATH = "Logo No Background Hoya.png"
 NUKLEYO_LOGO_PATH = "Nukleyo DS Logo.png"
 
 
-@st.cache_data
-def _nukleyo_logo_data_uri() -> str | None:
-    """Read the Nukleyo logo once and cache it as a base64 data URI.
-    Returns None if the file is not in the working directory."""
-    if not os.path.exists(NUKLEYO_LOGO_PATH):
-        return None
-    try:
-        with open(NUKLEYO_LOGO_PATH, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode("ascii")
-        return f"data:image/png;base64,{b64}"
-    except Exception:
-        return None
-
-
 def render_hero():
     """Hero with photographic logo (if present) or SVG emblem fallback."""
     if os.path.exists(LOGO_PATH):
@@ -1011,11 +993,19 @@ def render_hero():
             unsafe_allow_html=True,
         )
 
+    # Note: inline style="text-align:center" is added to the tagline because
+    # some Streamlit themes inject default `[data-testid="stMarkdownContainer"] p`
+    # rules with high specificity that defeat even !important class rules.
+    # Inline styles beat all selector-based rules so this is bulletproof.
     st.markdown(
-        '<div class="hoya-hero">'
-        '<h1 class="hoya-title">Philippine <em>Hoya</em> Clade Classifier</h1>'
-        '<p class="hoya-subtitle">Pollinarium Morphometric Analysis</p>'
-        '<p class="hoya-tagline">An ensemble machine-learning system for rapid '
+        '<div class="hoya-hero" style="text-align:center;">'
+        '<h1 class="hoya-title" style="text-align:center;">'
+        'Philippine <em>Hoya</em> Clade Classifier</h1>'
+        '<p class="hoya-subtitle" style="text-align:center;">'
+        'Pollinarium Morphometric Analysis</p>'
+        '<p class="hoya-tagline" '
+        'style="text-align:center; max-width:58ch; margin:0 auto 2.2rem auto;">'
+        'An ensemble machine-learning system for rapid '
         'clade-level identification of Philippine <em>Hoya</em> from microscopic '
         'pollinarium measurements.</p>'
         '<hr class="hoya-rule">'
@@ -1591,23 +1581,35 @@ Asian Institute of Management
 def render_footer():
     """Footer with Nukleyo ownership mark, attribution, and copyright.
 
-    NOTE: the HTML is built as a single flush-left string to avoid
-    Streamlit's markdown parser interpreting indented lines as code blocks
-    (any 4+ space indent triggers <pre><code> wrapping even with
-    unsafe_allow_html=True, which would render the HTML as literal text)."""
-    logo_uri = _nukleyo_logo_data_uri()
-    logo_html = (
-        f'<img class="hoya-footer-logo" src="{logo_uri}" alt="Nukleyo Decision Science"/>'
-        '<hr class="hoya-footer-divider"/>'
-        if logo_uri else ""
+    The Nukleyo logo is rendered via st.image() in a centered column rather
+    than inline base64 — the file is 1024×1024 (~1.4 MB), and base64-encoded
+    the payload is too big for inline HTML embed; Streamlit either chokes
+    on or strips that much markdown content. st.image() serves the file
+    over Streamlit's media protocol and the browser caches it normally.
+    """
+    # Hairline divider above the footer — same look as the old border-top
+    st.markdown(
+        '<hr style="border:0; border-top:1px solid #e8e3d8; margin:4rem 0 2.4rem 0;">',
+        unsafe_allow_html=True,
     )
 
+    # Centered Nukleyo logo (when present)
+    if os.path.exists(NUKLEYO_LOGO_PATH):
+        st.markdown('<div class="hoya-footer-logo-wrap">', unsafe_allow_html=True)
+        col_l, col_m, col_r = st.columns([2, 1, 2])
+        with col_m:
+            st.image(NUKLEYO_LOGO_PATH, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Footer text — flush-left string to avoid markdown code-block trap
     html = (
-        '<div class="hoya-footer">'
-        f'{logo_html}'
-        '<p>Developed by <strong>Jerald B. Bongalos</strong>, Asian Institute of Management</p>'
-        '<p>Dataset by <strong>Fernando B. Aurigue</strong>, Retired Career Scientist · DOST-PNRI</p>'
-        '<p class="hoya-footer-meta">© 2026 · MIT License · '
+        '<div class="hoya-footer-text">'
+        '<p style="text-align:center;">Developed by '
+        '<strong>Jerald B. Bongalos</strong>, Asian Institute of Management</p>'
+        '<p style="text-align:center;">Dataset by '
+        '<strong>Fernando B. Aurigue</strong>, Retired Career Scientist · DOST-PNRI</p>'
+        '<p class="hoya-footer-meta" style="text-align:center;">'
+        '© 2026 · MIT License · '
         'An initiative of <strong>NUKLEYO DECISION SCIENCE</strong></p>'
         '</div>'
     )
