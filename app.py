@@ -2022,8 +2022,15 @@ def render_batch_tab(model_package: dict):
         unsafe_allow_html=True,
     )
 
-    # Display
+    # Display — multiply 0–1 probability/confidence values by 100 so the
+    # ProgressColumn / NumberColumn format strings produce real percentages
+    # (e.g. 85.0% not 0.8%).
     display_df = results_df.copy()
+    for col in ["confidence", "prob_Acanthostemma", "prob_Centrostemma",
+                "prob_Hoya", "prob_Pterostelma"]:
+        if col in display_df.columns:
+            display_df[col] = display_df[col] * 100
+
     st.dataframe(
         display_df,
         use_container_width=True,
@@ -2033,7 +2040,7 @@ def render_batch_tab(model_package: dict):
             "predicted_clade": st.column_config.TextColumn("Clade", width="small"),
             "confidence": st.column_config.ProgressColumn(
                 "Confidence", format="%.1f%%",
-                min_value=0.0, max_value=1.0,
+                min_value=0.0, max_value=100.0,
             ),
             "pollinia_length": st.column_config.NumberColumn("P. length", format="%.2f"),
             "pollinia_width":  st.column_config.NumberColumn("P. width",  format="%.2f"),
@@ -2114,6 +2121,9 @@ def render_history_tab():
         "translator_arm_length", "translator_stalk", "extension",
     ]].copy()
     display_df = display_df.iloc[::-1].reset_index(drop=True)  # newest first
+    # Multiply 0–1 confidence by 100 so format "%.1f%%" produces a real
+    # percentage label (84.9% rather than 0.8%).
+    display_df["confidence"] = display_df["confidence"] * 100
 
     st.dataframe(
         display_df,
@@ -2123,7 +2133,7 @@ def render_history_tab():
             "timestamp_utc": st.column_config.TextColumn("Time (UTC)", width="medium"),
             "predicted_clade": st.column_config.TextColumn("Clade", width="medium"),
             "confidence": st.column_config.ProgressColumn(
-                "Confidence", format="%.1f%%", min_value=0.0, max_value=1.0,
+                "Confidence", format="%.1f%%", min_value=0.0, max_value=100.0,
             ),
             "pollinia_length": st.column_config.NumberColumn("P. length", format="%.2f"),
             "pollinia_width":  st.column_config.NumberColumn("P. width",  format="%.2f"),
