@@ -1,3 +1,11 @@
+# Hoya Clade Classifier — Streamlit theme config
+#
+# Pins the app to LIGHT theme regardless of the user's browser
+# `prefers-color-scheme` setting. Without this, native Streamlit widgets
+# (dataframe, expander, selectbox, textarea) render with dark backgrounds
+# on users whose OS/browser is in dark mode, clashing with the light
+# parchment palette of the rest of the app.
+
 [theme]
 base = "light"
 primaryColor = "#1a3d2e"
@@ -8,6 +16,11 @@ font = "sans serif"
 
 [server]
 headless = true
+# Serve files in the `static/` folder at /app/static/<filename>.
+# Required for the PWA manifest.json + icon-192/512 to be reachable
+# at the same origin as the Streamlit app (Chrome PWA install requires
+# same-origin manifest + icons).
+enableStaticServing = true
 
 [browser]
 gatherUsageStats = false
