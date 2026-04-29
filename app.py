@@ -368,30 +368,17 @@ html, body, [class*="css"], .stApp {
    .streamlit/config.toml file should pin theme=light, but these CSS
    overrides are belt-and-suspenders for any widget that escapes. */
 
-/* DataFrame / table */
-[data-testid="stDataFrame"],
-[data-testid="stDataFrame"] > div,
-[data-testid="stDataFrame"] [class*="dvn-"],
-[data-testid="stDataFrameResizable"],
-.stDataFrame {
-    background: var(--surface) !important;
-    color: var(--ink) !important;
+/* DataFrame / table — wrapper only.
+   IMPORTANT: do NOT override background or color on the inner elements
+   ([role="grid"], [role="row"], [role="gridcell"], child <div>s).
+   Streamlit's st.dataframe uses Glide Data Grid which paints content
+   to a <canvas>; the ARIA elements sit above the canvas for screen
+   readers but are transparent. Forcing them opaque hides the canvas
+   data. Theme (light/dark) for the canvas is driven by config.toml. */
+[data-testid="stDataFrame"] {
     border: 1px solid var(--hairline) !important;
     border-radius: 10px !important;
-}
-[data-testid="stDataFrame"] [role="grid"],
-[data-testid="stDataFrame"] [role="row"],
-[data-testid="stDataFrame"] [role="columnheader"],
-[data-testid="stDataFrame"] [role="gridcell"] {
-    background: var(--surface) !important;
-    color: var(--ink) !important;
-}
-/* Progress-column bar (replaces the default red on dark) */
-[data-testid="stDataFrame"] [class*="progress"] {
-    background: var(--moss-bg) !important;
-}
-[data-testid="stDataFrame"] [class*="progress"] > div {
-    background: var(--forest-deep) !important;
+    overflow: hidden;
 }
 
 /* Expander — header bar and body */
@@ -542,6 +529,16 @@ textarea {
     border-bottom: 2px solid var(--forest-deep) !important;
     background: transparent !important;
     font-weight: 600;
+}
+
+/* Color the active-tab underline indicator (BaseWeb's [data-baseweb="tab-highlight"])
+   forest-green instead of Streamlit's default red. Belt-and-suspenders alongside
+   the primaryColor setting in .streamlit/config.toml. */
+.stTabs [data-baseweb="tab-highlight"],
+[data-baseweb="tab-highlight"],
+.stTabs [data-baseweb="tab-border"] {
+    background-color: var(--forest-deep) !important;
+    background: var(--forest-deep) !important;
 }
 
 /* ─── Result card (rendered as one HTML block, so wrapping actually works) ─── */
