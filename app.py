@@ -90,7 +90,7 @@ html, body, [class*="css"], .stApp {
     content: "";
     position: fixed;
     inset: 0;
-    background-image: url('https://raw.githubusercontent.com/Jbong17/HOYA-FLWR-AI/main/pollinarium_watermark.png');
+    background-image: url('https://raw.githubusercontent.com/Jbong17/HOYA-FLWR-AI/main/pollinarium_watermark.JPG');
     background-size: 50% auto;
     background-position: center center;
     background-repeat: no-repeat;
@@ -539,17 +539,25 @@ html, body, [class*="css"], .stApp {
 }
 
 /* ─── Footer ─── */
-.hoya-footer-logo-wrap {
-    text-align: center;
-    margin: 0 auto 1.4rem auto;
+/* New layout: Nukleyo logo on the LEFT, attribution stack on the RIGHT */
+.hoya-footer-attribution {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    color: var(--ink-subtle);
+    line-height: 1.7;
+    padding-top: 0.4rem;
+    padding-bottom: 2rem;
 }
-.hoya-footer-logo-wrap [data-testid="stImage"] img {
-    max-width: clamp(80px, 9vw, 110px);
-    width: 100% !important;
-    height: auto;
-    margin: 0 auto;
-    display: block;
+.hoya-footer-attribution p {
+    margin: 0 0 0.7rem 0 !important;
+    text-align: left !important;
 }
+.hoya-footer-attribution strong {
+    color: var(--ink-muted);
+    font-weight: 600;
+}
+
+/* Fallback: centered text-only block (used if Nukleyo logo file missing) */
 .hoya-footer-text {
     text-align: center;
     font-family: 'Inter', sans-serif;
@@ -566,8 +574,10 @@ html, body, [class*="css"], .stApp {
     color: var(--ink-muted);
     font-weight: 500;
 }
+
+/* Copyright/initiative line — small, light, sage brand */
 .hoya-footer-meta {
-    margin-top: 1.4rem !important;
+    margin-top: 1.2rem !important;
     font-size: 0.82rem !important;
     color: #b8c5a8 !important;
     letter-spacing: 0.02em;
@@ -1848,13 +1858,122 @@ soft-voting ensemble.
 
 ---
 
+### The four Hoya clades
+
+The classifier resolves *Hoya* to one of four major clades. Click each below
+to read its diagnostic features and dataset representation:
+
+- **[Acanthostemma](#acanthostemma)** — broad-leafed, fleshy-coronaed; the
+  best-represented clade in this dataset.
+- **[Hoya](#hoya-clade)** *(sensu stricto)* — the type clade; defines the
+  nominate group of the genus.
+- **[Pterostelma](#pterostelma)** — "winged-corona" group; characteristically
+  large pollinaria.
+- **[Centrostemma](#centrostemma)** — rare; only one specimen in this dataset.
+
+#### Acanthostemma
+
+***Hoya* sect. *Acanthostemma*** (subsection / clade-level grouping within
+the genus) is one of the larger clades, with several dozen described
+species. In Philippine collections it is among the most frequently
+encountered, partly because of its broad ecological amplitude — species
+range from lowland forest epiphytes to montane rupicoles.
+
+**Diagnostic features.** Acanthostemma species typically have fleshy, often
+recurved coronal lobes that give the corona an upright, almost spiny
+profile (whence the name *acantho-* "thorn / spine"). Pollinaria tend
+toward shorter, broader pollinia coupled with a relatively robust
+corpusculum, producing a compact pollinarium silhouette. The translator
+arms are short and the caudicle extension is moderate.
+
+**Dataset representation.** **24 specimens (37.5 %)** — the second-largest
+clade in the corpus, well-represented enough to support reliable
+classification.
+
+**Examples.** *H. carnosa*-aligned forms, *H. cumingiana*, *H. multiflora*
+(in some classifications).
+
+---
+
+#### Hoya {#hoya-clade}
+
+***Hoya* sect. *Hoya*** is the **type clade** — it contains the type
+species and defines the nominate group from which the genus is named. In
+the Philippines it is the most diverse clade by species count, with many
+endemic forms.
+
+**Diagnostic features.** Pollinaria are highly variable across species,
+which is part of why the classifier benefits from confidence filtering.
+Pollinia in this clade tend to be more elongate than those of
+*Acanthostemma*, with corpuscula that span a wide morphometric range. The
+translator arms can be either short or moderately long; allometric
+relationships between pollinia and corpusculum dimensions are
+particularly informative.
+
+**Dataset representation.** **35 specimens (54.7 %)** — the majority class.
+This abundance underpins the classifier's strong performance on *Hoya*
+(~80 % recall, ~74–78 % precision under LOOCV).
+
+**Examples.** *H. cagayanensis*, *H. paziae*, *H. siariae*, and many other
+Philippine endemics.
+
+---
+
+#### Pterostelma
+
+***Hoya* sect. *Pterostelma*** ("winged corona", from Greek *πτερόν* "wing"
++ *στέμμα* "crown") is a smaller clade defined by distinctive coronal
+architecture — the lobes are extended into thin, wing-like flanges that
+project laterally from the corona's centre.
+
+**Diagnostic features.** Pterostelma pollinaria are characteristically
+**larger** than those of the other three clades, with elongate pollinia
+and a translator that includes a comparatively long stalk and caudicle
+extension. The "lever-arm" geometry of the translator-extension
+relationship is a key engineered feature in the classifier (the
+*translator_leverage* and *extension_index* features carry strong weight
+here).
+
+**Dataset representation.** **4 specimens (6.3 %)** — the second-smallest
+clade. The small sample size limits the classifier's confidence on
+Pterostelma predictions; expert verification is recommended.
+
+**Examples.** *H. mindorensis*, *H. siamica* (when present in Philippine
+collections).
+
+---
+
+#### Centrostemma
+
+***Hoya* sect. *Centrostemma*** ("central crown", from Greek *κέντρον*
+"centre" + *στέμμα* "crown") is the smallest and rarest of the four
+clades. It is sometimes treated as a separate genus *Centrostemma* in
+older literature, though current molecular evidence supports its inclusion
+within *Hoya* as a distinct section.
+
+**Diagnostic features.** The corona has a strongly developed central axis
+with reduced lateral lobes, giving the structure an upright, almost
+columnar appearance. Pollinaria are mid-sized with moderately
+proportioned pollinia and a well-defined corpusculum.
+
+**Dataset representation.** **1 specimen (1.6 %)** — severely
+underrepresented. With a single training instance, leave-one-out cross
+validation cannot meaningfully evaluate the classifier on Centrostemma;
+predictions for this clade should be treated as exploratory and require
+mandatory taxonomist verification.
+
+**Examples.** *H. multiflora* (under some treatments), *H. lyi* (Philippine
+records).
+
+---
+
 ### Limitations
 
-The training corpus has marked class imbalance — *Centrostemma* is represented
-by a single specimen and *Pterostelma* by four — which constrains performance
-on those clades. The classifier resolves to **clade level only**;
-species-level identification remains a manual taxonomic task. Geographic
-scope is limited to Philippine specimens.
+The training corpus has marked class imbalance — *Centrostemma* is
+represented by a single specimen and *Pterostelma* by four — which
+constrains performance on those clades. The classifier resolves to **clade
+level only**; species-level identification remains a manual taxonomic task.
+Geographic scope is limited to Philippine specimens.
         """
     )
 
@@ -1921,41 +2040,47 @@ Asian Institute of Management
 
 
 def render_footer():
-    """Footer with Nukleyo ownership mark, attribution, and copyright.
-
-    The Nukleyo logo is rendered via st.image() in a centered column rather
-    than inline base64 — the file is 1024×1024 (~1.4 MB), and base64-encoded
-    the payload is too big for inline HTML embed; Streamlit either chokes
-    on or strips that much markdown content. st.image() serves the file
-    over Streamlit's media protocol and the browser caches it normally.
-    """
-    # Hairline divider above the footer — same look as the old border-top
+    """Footer with Nukleyo logo anchored at the top-left of the attribution
+    block (developer credentials, dataset attribution, copyright)."""
+    # Hairline divider above the footer
     st.markdown(
-        '<hr style="border:0; border-top:1px solid #e8e3d8; margin:4rem 0 2.4rem 0;">',
+        '<hr style="border:0; border-top:1px solid #e8e3d8; margin:4rem 0 2rem 0;">',
         unsafe_allow_html=True,
     )
 
-    # Centered Nukleyo logo (when present)
     if os.path.exists(NUKLEYO_LOGO_PATH):
-        st.markdown('<div class="hoya-footer-logo-wrap">', unsafe_allow_html=True)
-        col_l, col_m, col_r = st.columns([2, 1, 2])
-        with col_m:
-            st.image(NUKLEYO_LOGO_PATH, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # Footer text — flush-left string to avoid markdown code-block trap
-    html = (
-        '<div class="hoya-footer-text">'
-        '<p style="text-align:center;">Developed by '
-        '<strong>Jerald B. Bongalos</strong>, Asian Institute of Management</p>'
-        '<p style="text-align:center;">Dataset by '
-        '<strong>Fernando B. Aurigue</strong>, Retired Career Scientist · DOST-PNRI</p>'
-        '<p class="hoya-footer-meta" style="text-align:center;">'
-        '© 2026 · MIT License · '
-        'An initiative of <strong>NUKLEYO DECISION SCIENCE</strong></p>'
-        '</div>'
-    )
-    st.markdown(html, unsafe_allow_html=True)
+        # Two-column: logo on left, attribution text on right
+        col_logo, col_text = st.columns([1, 5])
+        with col_logo:
+            st.image(NUKLEYO_LOGO_PATH, width=100)
+        with col_text:
+            st.markdown(
+                '<div class="hoya-footer-attribution">'
+                '<p><strong>Jerald B. Bongalos</strong>, PhD in Data Science<br>'
+                'Aboitiz School of Innovation, Technology and Entrepreneurship '
+                '| Asian Institute of Management</p>'
+                '<p>Dataset by <strong>Fernando B. Aurigue</strong>, '
+                'Retired Career Scientist · DOST-PNRI</p>'
+                '<p class="hoya-footer-meta">© 2026 · MIT License · '
+                'An initiative of <strong>NUKLEYO DECISION SCIENCE</strong></p>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+    else:
+        # No-logo fallback: render attribution centered, full-width
+        html = (
+            '<div class="hoya-footer-text">'
+            '<p style="text-align:center;"><strong>Jerald B. Bongalos</strong>, '
+            'PhD in Data Science, Aboitiz School of Innovation, Technology '
+            'and Entrepreneurship | Asian Institute of Management</p>'
+            '<p style="text-align:center;">Dataset by '
+            '<strong>Fernando B. Aurigue</strong>, Retired Career Scientist · DOST-PNRI</p>'
+            '<p class="hoya-footer-meta" style="text-align:center;">'
+            '© 2026 · MIT License · '
+            'An initiative of <strong>NUKLEYO DECISION SCIENCE</strong></p>'
+            '</div>'
+        )
+        st.markdown(html, unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
