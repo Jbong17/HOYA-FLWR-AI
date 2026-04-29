@@ -82,6 +82,28 @@ html, body, [class*="css"], .stApp {
     -webkit-font-smoothing: antialiased;
 }
 
+/* ─── Pollinarium microscope watermark (very subtle, ~6% opacity) ─── */
+/* Fixed-position pseudo-element behind all content. Image hosted in the
+   repo and served by GitHub's raw CDN. If the file is missing the
+   browser silently fails the request and the page renders without it. */
+.stApp::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image: url('https://raw.githubusercontent.com/Jbong17/HOYA-FLWR-AI/main/pollinarium_watermark.png');
+    background-size: 50% auto;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    opacity: 0.06;
+    pointer-events: none;
+    z-index: 0;
+}
+.stApp > * {
+    position: relative;
+    z-index: 1;
+}
+
 .block-container {
     padding-top: 3rem;
     padding-bottom: 4rem;
@@ -811,6 +833,114 @@ def history_csv_bytes() -> bytes:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# BATCH CLASSIFICATION (CSV upload → per-row prediction → CSV download)
+# ──────────────────────────────────────────────────────────────────────────────
+BATCH_REQUIRED_COLS = [
+    "pollinia_length", "pollinia_width",
+    "corpusculum_length", "corpusculum_width",
+    "translator_arm_length", "translator_stalk", "extension",
+]
+BATCH_TEMPLATE_COLS = ["specimen_id"] + BATCH_REQUIRED_COLS
+
+
+def build_template_csv() -> bytes:
+    """Template CSV with 3 example rows representing different clades."""
+    template = pd.DataFrame(
+        [
+            ["JBA-2026-001", 0.56, 0.30, 0.61, 0.35, 0.15, 0.58, 0.29],
+            ["JBA-2026-002", 0.78, 0.42, 0.48, 0.28, 0.12, 0.45, 0.22],
+            ["JBA-2026-003", 0.95, 0.52, 0.55, 0.32, 0.18, 0.62, 0.31],
+        ],
+        columns=BATCH_TEMPLATE_COLS,
+    )
+    return template.to_csv(index=False).encode("utf-8")
+
+
+def validate_batch_df(df: pd.DataFrame) -> tuple[bool, str]:
+    """Returns (is_valid, error_message). specimen_id is optional."""
+    missing = [c for c in BATCH_REQUIRED_COLS if c not in df.columns]
+    if missing:
+        return False, f"Missing required column(s): {', '.join(missing)}"
+    if len(df) == 0:
+        return False, "CSV is empty (no data rows)."
+    for col in BATCH_REQUIRED_COLS:
+        try:
+            pd.to_numeric(df[col], errors="raise")
+        except Exception:
+            return False, (
+                f"Column '{col}' contains non-numeric values. "
+                "All measurement columns must be numeric (mm)."
+            )
+    if df[BATCH_REQUIRED_COLS].isnull().any().any():
+        return False, (
+            "Some measurement values are missing. Every row must have a "
+            "value for all 7 measurement columns."
+        )
+    return True, ""
+
+
+def classify_batch(df: pd.DataFrame, model_package: dict) -> pd.DataFrame:
+    """Run prediction on each row. Returns a results DataFrame."""
+    results = []
+    progress = st.progress(0, text="Classifying batch…")
+    n = len(df)
+    for i, (_, row) in enumerate(df.iterrows()):
+        specimen_id = (
+            str(row["specimen_id"]) if "specimen_id" in df.columns
+            and pd.notna(row.get("specimen_id"))
+            else f"row-{i + 1}"
+        )
+        measurements = {c: float(row[c]) for c in BATCH_REQUIRED_COLS}
+        try:
+            result = predict_clade(measurements, model_package)
+            entry = {
+                "specimen_id": specimen_id,
+                **{c: round(measurements[c], 3) for c in BATCH_REQUIRED_COLS},
+                "predicted_clade": result["clade"],
+                "confidence": round(float(result["confidence"]), 4),
+                **{
+                    f"prob_{k}": round(float(v), 4)
+                    for k, v in result["probabilities"].items()
+                },
+            }
+        except Exception as exc:
+            entry = {
+                "specimen_id": specimen_id,
+                **{c: round(measurements[c], 3) for c in BATCH_REQUIRED_COLS},
+                "predicted_clade": "ERROR",
+                "confidence": 0.0,
+                "error": str(exc)[:120],
+            }
+        results.append(entry)
+        progress.progress((i + 1) / n)
+    progress.empty()
+    return pd.DataFrame(results)
+
+
+def append_batch_to_history(results_df: pd.DataFrame, model_package: dict) -> int:
+    """Append every successful row from a batch to st.session_state.history.
+    Returns number of rows added."""
+    classes = model_package["metadata"]["classes"]
+    added = 0
+    for _, row in results_df.iterrows():
+        if row.get("predicted_clade") == "ERROR":
+            continue
+        measurements = {c: float(row[c]) for c in BATCH_REQUIRED_COLS}
+        result = {
+            "clade": row["predicted_clade"],
+            "confidence": float(row["confidence"]),
+            "probabilities": {
+                k: float(row[f"prob_{k}"])
+                for k in classes
+                if f"prob_{k}" in row
+            },
+        }
+        append_history(measurements, result)
+        added += 1
+    return added
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # GITHUB INTEGRATION (Issues for review queue, file commits for log)
 # ──────────────────────────────────────────────────────────────────────────────
 def _github_token() -> str | None:
@@ -1337,6 +1467,176 @@ def render_submission_section(measurements: dict, result: dict, model_package: d
                 st.error(info)
 
 
+def render_batch_tab(model_package: dict):
+    """Bulk classification via CSV upload."""
+    st.markdown(
+        '<p class="hoya-section">Batch Classification</p>'
+        '<p class="hoya-section-sub">Classify many specimens at once. Download '
+        'the template, fill in your measurements (one specimen per row), '
+        'upload it back, and download the results as a single CSV with '
+        'predicted clade, confidence, and full probability distribution.</p>',
+        unsafe_allow_html=True,
+    )
+
+    st.session_state.setdefault("batch_results", None)
+
+    # ── Step 1 — template ─────────────────────────────────────────────────
+    st.markdown(
+        '<p style="font-family:Inter; font-size:0.78rem; font-weight:600; '
+        "color:#5a5a5a; text-transform:uppercase; letter-spacing:0.16em; "
+        'margin: 1.6rem 0 0.6rem 0;">1 · Get the template</p>',
+        unsafe_allow_html=True,
+    )
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        st.download_button(
+            "Download CSV template",
+            data=build_template_csv(),
+            file_name="hoya_classifier_template.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+    with c2:
+        st.markdown(
+            '<p style="font-family:Inter; font-size:0.92rem; color:#5a5a5a; '
+            'line-height:1.6; margin:0; padding-top:0.4rem;">'
+            "8 columns · 3 example rows · UTF-8 encoded. The "
+            "<code>specimen_id</code> column is optional but recommended; "
+            "the seven measurement columns are required, all in millimetres."
+            "</p>",
+            unsafe_allow_html=True,
+        )
+
+    # ── Step 2 — upload ───────────────────────────────────────────────────
+    st.markdown(
+        '<p style="font-family:Inter; font-size:0.78rem; font-weight:600; '
+        "color:#5a5a5a; text-transform:uppercase; letter-spacing:0.16em; "
+        'margin: 2rem 0 0.6rem 0;">2 · Upload your CSV</p>',
+        unsafe_allow_html=True,
+    )
+    uploaded = st.file_uploader(
+        "Upload CSV file",
+        type=["csv"],
+        label_visibility="collapsed",
+    )
+
+    if uploaded is None:
+        return
+
+    try:
+        df = pd.read_csv(uploaded)
+    except Exception as exc:
+        st.error(f"Could not parse the CSV: {exc}")
+        return
+
+    ok, msg = validate_batch_df(df)
+    if not ok:
+        st.error(msg)
+        return
+
+    n = len(df)
+    st.markdown(
+        f'<p style="font-family:Inter; font-size:0.95rem; color:#5a5a5a; '
+        f'margin: 0.6rem 0 0.8rem 0;"><strong>{n}</strong> '
+        f'specimen{"s" if n != 1 else ""} loaded and validated.</p>',
+        unsafe_allow_html=True,
+    )
+
+    if st.button(
+        f"Classify {n} specimen{'s' if n != 1 else ''}",
+        type="primary",
+        use_container_width=True,
+    ):
+        results_df = classify_batch(df, model_package)
+        st.session_state.batch_results = results_df
+        # Auto-append to history (per user choice in setup)
+        added = append_batch_to_history(results_df, model_package)
+        st.success(
+            f"Classification complete. {added} of {n} rows added to "
+            f"the **History** tab automatically."
+        )
+
+    # ── Step 3 — results ──────────────────────────────────────────────────
+    results_df = st.session_state.get("batch_results")
+    if results_df is None or len(results_df) == 0:
+        return
+
+    st.markdown(
+        '<p style="font-family:Inter; font-size:0.78rem; font-weight:600; '
+        "color:#5a5a5a; text-transform:uppercase; letter-spacing:0.16em; "
+        'margin: 2rem 0 0.6rem 0;">3 · Results</p>',
+        unsafe_allow_html=True,
+    )
+
+    # Summary
+    n_rows = len(results_df)
+    n_ok = int((results_df["predicted_clade"] != "ERROR").sum())
+    n_high = int(((results_df["confidence"] >= 0.70)
+                  & (results_df["predicted_clade"] != "ERROR")).sum())
+    n_med = int(((results_df["confidence"] >= 0.50)
+                 & (results_df["confidence"] < 0.70)
+                 & (results_df["predicted_clade"] != "ERROR")).sum())
+    n_low = int(((results_df["confidence"] < 0.50)
+                 & (results_df["predicted_clade"] != "ERROR")).sum())
+    n_err = n_rows - n_ok
+
+    st.markdown(
+        f'<p style="font-family:Inter; font-size:0.92rem; color:#5a5a5a; '
+        f'margin: 0 0 1rem 0;">'
+        f"<strong>{n_rows}</strong> classified  ·  "
+        f'<span style="color:#2d5e3e;">{n_high} high</span>  ·  '
+        f'<span style="color:#9a6f1f;">{n_med} medium</span>  ·  '
+        f'<span style="color:#8b3a3a;">{n_low} low</span>'
+        + (f'  ·  <span style="color:#8b3a3a;">{n_err} error</span>'
+           if n_err else "")
+        + "</p>",
+        unsafe_allow_html=True,
+    )
+
+    # Display
+    display_df = results_df.copy()
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "specimen_id": st.column_config.TextColumn("Specimen ID", width="medium"),
+            "predicted_clade": st.column_config.TextColumn("Clade", width="small"),
+            "confidence": st.column_config.ProgressColumn(
+                "Confidence", format="%.1f%%",
+                min_value=0.0, max_value=1.0,
+            ),
+            "pollinia_length": st.column_config.NumberColumn("P. length", format="%.2f"),
+            "pollinia_width":  st.column_config.NumberColumn("P. width",  format="%.2f"),
+            "corpusculum_length": st.column_config.NumberColumn("C. length", format="%.2f"),
+            "corpusculum_width":  st.column_config.NumberColumn("C. width",  format="%.2f"),
+            "translator_arm_length": st.column_config.NumberColumn("T. arm", format="%.2f"),
+            "translator_stalk": st.column_config.NumberColumn("T. stalk", format="%.2f"),
+            "extension": st.column_config.NumberColumn("Caud.", format="%.2f"),
+            "prob_Acanthostemma": st.column_config.NumberColumn("Acanthostemma", format="%.1f%%"),
+            "prob_Centrostemma":  st.column_config.NumberColumn("Centrostemma",  format="%.1f%%"),
+            "prob_Hoya":          st.column_config.NumberColumn("Hoya",          format="%.1f%%"),
+            "prob_Pterostelma":   st.column_config.NumberColumn("Pterostelma",   format="%.1f%%"),
+        },
+    )
+
+    # Download button
+    st.markdown("<div style='height:0.4rem;'></div>", unsafe_allow_html=True)
+    cdl1, cdl2 = st.columns([1, 1])
+    with cdl1:
+        st.download_button(
+            "Download results CSV",
+            data=results_df.to_csv(index=False).encode("utf-8"),
+            file_name=f"hoya_batch_results_{_dt.datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+    with cdl2:
+        if st.button("Clear results", use_container_width=True):
+            st.session_state.batch_results = None
+            st.rerun()
+
+
 def render_history_tab():
     """Browser-session log of every classification + sync-to-repo + CSV download."""
     st.markdown(
@@ -1667,14 +1967,18 @@ def main():
     model_package = load_model()
     render_sidebar(model_package)
 
-    tab1, tab2, tab3, tab4 = st.tabs(["Classifier", "History", "Guide", "About"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+        ["Classifier", "Batch", "History", "Guide", "About"]
+    )
     with tab1:
         render_classifier_tab(model_package)
     with tab2:
-        render_history_tab()
+        render_batch_tab(model_package)
     with tab3:
-        render_guide_tab()
+        render_history_tab()
     with tab4:
+        render_guide_tab()
+    with tab5:
         render_about_tab()
 
     render_footer()
