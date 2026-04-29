@@ -146,10 +146,11 @@ html, body, [class*="css"], .stApp {
     font-weight: 500;
 }
 .hoya-subtitle {
-    /* Garamond italic in sage. Bumped ~5pt larger than the title size for
-       legibility — the italic sage style makes it visually recede otherwise. */
+    /* Garamond italic in sage. Bumped substantially over the title size
+       for legibility — the italic sage style makes it visually recede
+       otherwise. */
     font-family: 'Cormorant Garamond', 'EB Garamond', Garamond, Georgia, serif;
-    font-size: clamp(1.55rem, 4.6vw, 3rem);
+    font-size: clamp(1.85rem, 5.3vw, 3.3rem);
     font-weight: 500;
     font-style: italic;
     line-height: 1.15;
@@ -203,7 +204,7 @@ html, body, [class*="css"], .stApp {
     margin: 0 0 1.5rem 0;
 }
 
-/* ─── Card ─── */
+/* ─── Card (legacy class — kept for compatibility) ─── */
 .hoya-card {
     background: var(--surface);
     border: 1px solid var(--hairline);
@@ -212,6 +213,20 @@ html, body, [class*="css"], .stApp {
     margin: 0 0 1rem 0;
     box-shadow: 0 1px 2px rgba(20, 30, 25, 0.03);
 }
+
+/* Style Streamlit's native bordered container to match the .hoya-card
+   aesthetic. The bordered container properly wraps its child Streamlit
+   components (number inputs, columns, etc.) which a manual <div> in
+   markdown cannot do. */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    border: 1px solid var(--hairline) !important;
+    border-radius: 14px !important;
+    background: var(--surface) !important;
+    padding: 1.5rem 1.6rem !important;
+    margin-bottom: 1rem !important;
+    box-shadow: 0 1px 2px rgba(20, 30, 25, 0.03) !important;
+}
+
 .hoya-card-title {
     font-family: 'Inter', sans-serif;
     font-size: 0.78rem;
@@ -219,7 +234,20 @@ html, body, [class*="css"], .stApp {
     text-transform: uppercase;
     letter-spacing: 0.18em;
     color: var(--sage);
-    margin: 0 0 1rem 0;
+    margin: 0 0 0.55rem 0;
+}
+.hoya-card-desc {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.94rem;
+    font-weight: 400;
+    color: var(--ink-muted);
+    line-height: 1.55;
+    margin: 0 0 1.25rem 0;
+}
+.hoya-card-desc em {
+    font-style: italic;
+    color: var(--ink);
+    font-weight: 500;
 }
 
 /* ─── Inputs ─── */
@@ -1068,61 +1096,75 @@ def render_input_form():
     init_state()
     render_sample_pills()
 
-    st.markdown(
-        '<div class="hoya-card"><p class="hoya-card-title">Pollinia</p>',
-        unsafe_allow_html=True,
-    )
-    c1, c2 = st.columns(2)
-    with c1:
-        st.number_input(
-            "Length (mm)", 0.0, 10.0, key="pollinia_length",
-            step=0.01, format="%.2f", help=FEATURE_HELP["pollinia_length"],
+    # ── Pollinia ──────────────────────────────────────────────────────────
+    with st.container(border=True):
+        st.markdown(
+            '<p class="hoya-card-title">Pollinia</p>'
+            '<p class="hoya-card-desc">The two compact, waxy pollen masses '
+            'transferred as a single unit during pollination. Their length '
+            'and width are diagnostic across <em>Hoya</em> clades.</p>',
+            unsafe_allow_html=True,
         )
-    with c2:
-        st.number_input(
-            "Width (mm)", 0.0, 5.0, key="pollinia_width",
-            step=0.01, format="%.2f", help=FEATURE_HELP["pollinia_width"],
-        )
-    st.markdown("</div>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        with c1:
+            st.number_input(
+                "Length (mm)", 0.0, 10.0, key="pollinia_length",
+                step=0.01, format="%.2f", help=FEATURE_HELP["pollinia_length"],
+            )
+        with c2:
+            st.number_input(
+                "Width (mm)", 0.0, 5.0, key="pollinia_width",
+                step=0.01, format="%.2f", help=FEATURE_HELP["pollinia_width"],
+            )
 
-    st.markdown(
-        '<div class="hoya-card"><p class="hoya-card-title">Corpusculum</p>',
-        unsafe_allow_html=True,
-    )
-    c1, c2 = st.columns(2)
-    with c1:
-        st.number_input(
-            "Length (mm)", 0.0, 5.0, key="corpusculum_length",
-            step=0.01, format="%.2f", help=FEATURE_HELP["corpusculum_length"],
+    # ── Corpusculum ───────────────────────────────────────────────────────
+    with st.container(border=True):
+        st.markdown(
+            '<p class="hoya-card-title">Corpusculum</p>'
+            '<p class="hoya-card-desc">The dark, sclerotised gland at the apex '
+            'of the pollinarium that physically clips onto a visiting pollinator '
+            'and carries the pollinia to the next flower.</p>',
+            unsafe_allow_html=True,
         )
-    with c2:
-        st.number_input(
-            "Width (mm)", 0.0, 2.0, key="corpusculum_width",
-            step=0.01, format="%.2f", help=FEATURE_HELP["corpusculum_width"],
-        )
-    st.markdown("</div>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        with c1:
+            st.number_input(
+                "Length (mm)", 0.0, 5.0, key="corpusculum_length",
+                step=0.01, format="%.2f", help=FEATURE_HELP["corpusculum_length"],
+            )
+        with c2:
+            st.number_input(
+                "Width (mm)", 0.0, 2.0, key="corpusculum_width",
+                step=0.01, format="%.2f", help=FEATURE_HELP["corpusculum_width"],
+            )
 
-    st.markdown(
-        '<div class="hoya-card"><p class="hoya-card-title">Translator &amp; Caudicle</p>',
-        unsafe_allow_html=True,
-    )
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.number_input(
-            "Arm length (mm)", 0.0, 2.0, key="translator_arm_length",
-            step=0.01, format="%.2f", help=FEATURE_HELP["translator_arm_length"],
+    # ── Translator & Caudicle ─────────────────────────────────────────────
+    with st.container(border=True):
+        st.markdown(
+            '<p class="hoya-card-title">Translator &amp; Caudicle</p>'
+            '<p class="hoya-card-desc">The connecting structures between '
+            'corpusculum and pollinia: a flexible <em>arm</em>, a proximal '
+            '<em>stalk</em> (caudicle), and a slender <em>caudicle '
+            'extension</em> that levers the pollinia into alignment with '
+            'the next stigma.</p>',
+            unsafe_allow_html=True,
         )
-    with c2:
-        st.number_input(
-            "Stalk (mm)", 0.0, 2.0, key="translator_stalk",
-            step=0.01, format="%.2f", help=FEATURE_HELP["translator_stalk"],
-        )
-    with c3:
-        st.number_input(
-            "Caudicle ext. (mm)", 0.0, 2.0, key="extension",
-            step=0.01, format="%.2f", help=FEATURE_HELP["extension"],
-        )
-    st.markdown("</div>", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.number_input(
+                "Arm length (mm)", 0.0, 2.0, key="translator_arm_length",
+                step=0.01, format="%.2f", help=FEATURE_HELP["translator_arm_length"],
+            )
+        with c2:
+            st.number_input(
+                "Stalk (mm)", 0.0, 2.0, key="translator_stalk",
+                step=0.01, format="%.2f", help=FEATURE_HELP["translator_stalk"],
+            )
+        with c3:
+            st.number_input(
+                "Caudicle ext. (mm)", 0.0, 2.0, key="extension",
+                step=0.01, format="%.2f", help=FEATURE_HELP["extension"],
+            )
 
 
 def render_result(result: dict):
